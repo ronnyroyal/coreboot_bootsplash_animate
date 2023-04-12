@@ -1,13 +1,23 @@
 Setup:
-sudo apt install bison build-essential curl flex git gnat libncurses5-dev m4 zlib1g-dev
-git clone https://github.com/ronnyroyal/coreboot_bootsplash_animate.git
-git submodule update --init
-make crossgcc-i386 CPUS=$(nproc)
-cp .config_example_QEMU .config
-make
-chmod +x addimages.sh
-./addimages.sh
-qemu-system-x86_64 -bios build/coreboot.rom -serial stdio
+===============
+
+`sudo apt install bison build-essential curl flex git gnat libncurses5-dev m4 zlib1g-dev`
+
+`git clone https://github.com/ronnyroyal/coreboot_bootsplash_animate.git`
+
+`git submodule update --init`
+
+`make crossgcc-i386 CPUS=$(nproc)`
+
+`cp .config_example_QEMU .config`
+
+`make -j$(nproc)`
+
+`chmod +x addimages.sh`
+
+`./addimages.sh`
+
+qemu-system-x86_64 -bios build/coreboot.rom -serial stdio`
 
 
 coreboot README
