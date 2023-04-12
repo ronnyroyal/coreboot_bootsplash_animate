@@ -5,6 +5,8 @@ Setup:
 
 `git clone https://github.com/ronnyroyal/coreboot_bootsplash_animate.git`
 
+`cd coreboot_bootsplash_animate
+
 `git submodule update --init`
 
 `make crossgcc-i386 CPUS=$(nproc)`
