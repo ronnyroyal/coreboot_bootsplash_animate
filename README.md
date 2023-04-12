@@ -17,7 +17,7 @@ Setup:
 
 `./addimages.sh`
 
-qemu-system-x86_64 -bios build/coreboot.rom -serial stdio`
+`qemu-system-x86_64 -bios build/coreboot.rom -serial stdio`
 
 
 coreboot README
