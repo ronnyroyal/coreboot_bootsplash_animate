@@ -21,6 +21,8 @@ Setup:
 
 `qemu-system-x86_64 -bios build/coreboot.rom -serial stdio`
 
+The actual code changes that allow coreboot to display an animated bootsplash are all related to SeaBIOS and can be found at https://github.com/ronnyroyal/seabios
+
 
 coreboot README
 ===============
