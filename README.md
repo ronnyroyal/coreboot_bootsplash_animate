@@ -5,7 +5,7 @@ Setup:
 
 `git clone https://github.com/ronnyroyal/coreboot_bootsplash_animate.git`
 
-`cd coreboot_bootsplash_animate
+`cd coreboot_bootsplash_animate`
 
 `git submodule update --init`
 
