@@ -112,8 +112,10 @@ add_bootblock = \
 	$(cbfs-autogen-attributes) $(TS_OPTIONS) $(CBFSTOOL_ADD_CMD_OPTIONS)
 endif
 
+ifneq ($(CONFIG_CBFS_VERIFICATION),y)
 $(call src-to-obj,bootblock,$(dir)/walkcbfs.S): $(obj)/fmap_config.h
 bootblock-y += walkcbfs.S
+endif
 
 endif # CONFIG_ARCH_BOOTBLOCK_X86_32 / CONFIG_ARCH_BOOTBLOCK_X86_64
 
@@ -274,7 +276,6 @@ ramstage-$(CONFIG_DEBUG_NULL_DEREF_BREAKPOINTS) += null_breakpoint.c
 ramstage-$(CONFIG_GENERATE_PIRQ_TABLE) += pirq_routing.c
 ramstage-y += rdrand.c
 ramstage-$(CONFIG_GENERATE_SMBIOS_TABLES) += smbios.c
-ramstage-$(CONFIG_GENERATE_SMBIOS_TABLES) += smbios_defaults.c
 ramstage-y += tables.c
 ramstage-$(CONFIG_COOP_MULTITASKING) += thread.c
 ramstage-$(CONFIG_COOP_MULTITASKING) += thread_switch.S
@@ -298,6 +299,10 @@ ifeq ($(CONFIG_ARCH_RAMSTAGE_X86_64),y)
 target-objcopy=-O elf64-x86-64 -B i386:x86-64
 LD_MACHINE =-m elf_x86_64
 endif
+
+# Make sure generated code does not use XMMx and MMx registers
+CFLAGS_x86_32 += -mno-mmx -mno-sse
+CFLAGS_x86_64 += -mno-mmx -mno-sse
 
 ramstage-srcs += $(wildcard src/mainboard/$(MAINBOARDDIR)/mainboard.c)
 ifeq ($(CONFIG_GENERATE_MP_TABLE),y)

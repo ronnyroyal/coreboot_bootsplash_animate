@@ -4,6 +4,7 @@
 #define _SOC_CHIP_H_
 
 #include <drivers/i2c/designware/dw_i2c.h>
+#include <device/pci_ids.h>
 #include <gpio.h>
 #include <intelblocks/cfg.h>
 #include <intelblocks/gspi.h>
@@ -17,13 +18,27 @@
 #include <soc/usb.h>
 #include <stdint.h>
 
+#define MAX_SAGV_POINTS 4
+#define MAX_HD_AUDIO_SDI_LINKS 2
+
 /* Types of different SKUs */
 enum soc_intel_meteorlake_power_limits {
-	MTL_P_POWER_LIMITS_1,
-	MTL_P_POWER_LIMITS_2,
-	MTL_P_POWER_LIMITS_3,
-	MTL_P_POWER_LIMITS_4,
+	MTL_P_282_CORE,
 	MTL_POWER_LIMITS_COUNT
+};
+
+/* TDP values for different SKUs */
+enum soc_intel_meteorlake_cpu_tdps {
+	TDP_15W = 15
+};
+
+/* Mapping of different SKUs based on CPU ID and TDP values */
+static const struct {
+	unsigned int cpu_id;
+	enum soc_intel_meteorlake_power_limits limits;
+	enum soc_intel_meteorlake_cpu_tdps cpu_tdp;
+} cpuid_to_mtl[] = {
+	{ PCI_DID_INTEL_MTL_P_ID_2, MTL_P_282_CORE, TDP_15W },
 };
 
 /* Types of display ports */
@@ -39,8 +54,8 @@ enum ddi_ports {
 };
 
 enum ddi_port_flags {
-	DDI_ENABLE_DDC = 1 << 0,
-	DDI_ENABLE_HPD = 1 << 1,
+	DDI_ENABLE_DDC = 1 << 0, // Display Data Channel
+	DDI_ENABLE_HPD = 1 << 1, // Hot Plug Detect
 };
 
 /*
@@ -100,8 +115,6 @@ struct soc_intel_meteorlake_config {
 	int s0ix_enable;
 	/* Support for TCSS xhci, xdci, TBT PCIe root ports and DMA controllers */
 	uint8_t tcss_d3_hot_disable;
-	/* Support for TBT PCIe root ports and DMA controllers with D3Hot->D3Cold */
-	uint8_t tcss_d3_cold_disable;
 	/* Enable DPTF support */
 	int dptf_enable;
 
@@ -128,6 +141,16 @@ struct soc_intel_meteorlake_config {
 		SAGV_DISABLED,
 		SAGV_ENABLED,
 	} sagv;
+
+	/* System Agent dynamic frequency work points that memory will be training
+	 * at the enabled frequencies. Possible work points are:
+	 * 0x3:Points0_1, 0x7:Points0_1_2, 0xF:AllPoints0_1_2_3
+	 */
+	enum {
+		SAGV_POINTS_0_1 = 0x03,
+		SAGV_POINTS_0_1_2 = 0x07,
+		SAGV_POINTS_0_1_2_3 = 0x0f,
+	} sagv_wp_bitmap;
 
 	/* Rank Margin Tool. 1:Enable, 0:Disable */
 	uint8_t rmt;
@@ -169,6 +192,8 @@ struct soc_intel_meteorlake_config {
 
 	/* Audio related */
 	uint8_t pch_hda_dsp_enable;
+
+	bool pch_hda_sdi_enable[MAX_HD_AUDIO_SDI_LINKS];
 
 	/* iDisp-Link T-Mode 0: 2T, 2: 4T, 3: 8T, 4: 16T */
 	enum {
@@ -241,6 +266,9 @@ struct soc_intel_meteorlake_config {
 	 * 1: High
 	 */
 	uint8_t serial_io_gspi_cs_state[CONFIG_SOC_INTEL_COMMON_BLOCK_GSPI_MAX];
+
+	/* CNVi WiFi Core Enable/Disable */
+	bool cnvi_wifi_core;
 
 	/* CNVi BT Core Enable/Disable */
 	bool cnvi_bt_core;
@@ -352,6 +380,15 @@ struct soc_intel_meteorlake_config {
 	uint8_t energy_perf_pref_value;
 
 	bool disable_vmx;
+
+	/*
+	 * SAGV Frequency per point in Mhz. 0 is Auto, otherwise holds the
+	 * frequency value expressed as an integer. For example: 1867
+	 */
+	uint16_t sagv_freq_mhz[MAX_SAGV_POINTS];
+
+	/* Gear Selection for SAGV points. 0: Auto, 1: Gear 1, 2: Gear 2, 4: Gear 4 */
+	uint8_t sagv_gear[MAX_SAGV_POINTS];
 };
 
 typedef struct soc_intel_meteorlake_config config_t;

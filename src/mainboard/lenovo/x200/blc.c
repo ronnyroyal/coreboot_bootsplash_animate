@@ -18,6 +18,7 @@ static const struct blc_pwm_t blc_entries[] = {
 	{"B121EW09 V3 ", 400},
 	{"HV121WX4-120", 110}, /* Aftermarket AFFS lcd, works well at low pwm */
 	{"LTN121AT03001", 110},
+	{"LTN121AT07L02", 750}, /* Its part name is LTN121AT07-L02 */
 	{"LTN121AP03001", 750},
 	/* TODO: untested panels found on thinkwiki */
 	/* Generally CCFL runs best at lower PWM */
@@ -37,8 +38,7 @@ int get_blc_values(const struct blc_pwm_t **entries)
 
 const char *mainboard_vbt_filename(void)
 {
-	struct device *gma = pcidev_path_on_root(PCI_DEVFN(0x2, 0));
-	u16 pwm_freq = gma ? get_blc_pwm_freq_value(gm45_get_lvds_edid_str(gma)) : 0;
+	u16 pwm_freq = get_blc_pwm_freq_value();
 
 	if (pwm_freq == 0) {
 		printk(BIOS_DEBUG,

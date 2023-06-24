@@ -28,14 +28,14 @@ struct cpu_apic_info_type {
 	int32_t apic_ids[CONFIG_MAX_CPUS];
 
 	/* Total CPU count */
-	uint8_t total_cpu_cnt;
+	uint16_t total_cpu_cnt;
 
 	/*
 	 * Total Performance core count. This will be used
 	 * to identify the start of Efficient Cores's
 	 * APIC ID list
 	 */
-	uint8_t perf_cpu_cnt;
+	uint16_t perf_cpu_cnt;
 };
 
 static struct cpu_apic_info_type cpu_apic_info;
@@ -158,7 +158,7 @@ void acpigen_write_CPPC_hybrid_method(s32 core_id)
 		snprintf(pkg_path, sizeof(pkg_path), CPPC_PACKAGE_NAME, 0);
 	else
 		snprintf(pkg_path, sizeof(pkg_path),
-			 CONFIG_ACPI_CPU_STRING "." CPPC_PACKAGE_NAME, 0);
+			 "\\_SB." CONFIG_ACPI_CPU_STRING "." CPPC_PACKAGE_NAME, 0);
 
 	acpigen_write_method("_CPC", 0);
 

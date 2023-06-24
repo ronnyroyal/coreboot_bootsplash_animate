@@ -166,9 +166,35 @@ chip soc/intel/jasperlake
 	# Enable DPTF
 	register "dptf_enable" = "1"
 
-	register "power_limits_config" = "{
+	# Power limit config
+	register "power_limits_config[JSL_N4500_6W_CORE]" = "{
 		.tdp_pl1_override = 6,
 		.tdp_pl2_override = 20,
+	}"
+
+	register "power_limits_config[JSL_N6000_6W_CORE]" = "{
+		.tdp_pl1_override = 6,
+		.tdp_pl2_override = 20,
+	}"
+
+	register "power_limits_config[JSL_N5100_6W_CORE]" = "{
+		.tdp_pl1_override = 6,
+		.tdp_pl2_override = 20,
+	}"
+
+	register "power_limits_config[JSL_N4505_10W_CORE]" = "{
+		.tdp_pl1_override = 10,
+		.tdp_pl2_override = 25,
+	}"
+
+	register "power_limits_config[JSL_N5105_10W_CORE]" = "{
+		.tdp_pl1_override = 10,
+		.tdp_pl2_override = 25,
+	}"
+
+	register "power_limits_config[JSL_N6005_10W_CORE]" = "{
+		.tdp_pl1_override = 10,
+		.tdp_pl2_override = 25,
 	}"
 
 	register "tcc_offset" = "10"     # TCC of 90C
@@ -384,7 +410,33 @@ chip soc/intel/jasperlake
 		end # eSPI Interface
 		device pci 1f.1 on  end # P2SB
 		device pci 1f.2 hidden end # Power Management Controller
-		device pci 1f.3 off end # Intel HDA/cAVS
+		device pci 1f.3 on
+			chip drivers/sof
+				register "spkr_tplg" = "rt1015"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on
+					probe AUDIO_AMP RT1015_I2C
+					probe AUDIO_AMP RT1015P_AUTO
+				end
+			end
+			chip drivers/sof
+				register "spkr_tplg" = "max98360a"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on
+					probe AUDIO_AMP MAX98360
+				end
+			end
+			chip drivers/sof
+				register "spkr_tplg" = "max98357a"
+				register "jack_tplg" = "rt5682"
+				register "mic_tplg" = "_2ch_pdm0"
+				device generic 0 on
+					probe AUDIO_AMP UNPROVISIONED
+				end
+			end
+		end # Intel HDA/cAVS
 		device pci 1f.4 off end # SMBus
 		device pci 1f.5 on  end # PCH SPI
 		device pci 1f.7 off end # Intel Trace Hub

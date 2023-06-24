@@ -31,6 +31,7 @@ ramstage-y	+= fsp_s_params.c
 ramstage-y	+= mca.c
 ramstage-y	+= root_complex.c
 ramstage-y	+= xhci.c
+ramstage-y	+= manifest.c
 
 smm-y		+= gpio.c
 smm-y		+= smihandler.c
@@ -216,6 +217,9 @@ OPT_SPL_RW_AB_TABLE_FILE=$(call add_opt_prefix, $(SPL_RW_AB_TABLE_FILE), --spl-t
 # If vboot uses 2 RW slots, then 2 copies of PSP binaries are redundant
 OPT_RECOVERY_AB_SINGLE_COPY=$(if $(CONFIG_VBOOT_SLOTS_RW_AB), --recovery-ab-single-copy)
 
+MANIFEST_FILE=$(obj)/amdfw_manifest
+OPT_MANIFEST=$(call add_opt_prefix, $(MANIFEST_FILE), --output-manifest)
+
 AMDFW_COMMON_ARGS=$(OPT_PSP_APCB_FILES) \
 		$(OPT_APOB_ADDR) \
 		$(OPT_DEBUG_AMDFWTOOL) \
@@ -259,6 +263,7 @@ $(obj)/amdfw.rom:	$(call strip_quotes, $(PSP_BIOSBIN_FILE)) \
 		$(OPT_VERSTAGE_FILE) \
 		$(OPT_VERSTAGE_SIG_FILE) \
 		$(OPT_SPL_TABLE_FILE) \
+		$(OPT_MANIFEST) \
 		--location $(shell printf "%#x" $(MENDOCINO_FWM_POSITION)) \
 		--output $@
 
@@ -308,6 +313,11 @@ $(obj)/amdfw_b.rom: $(obj)/amdfw.rom
 
 $(obj)/amdfw_a.rom.body: $(obj)/amdfw_a.rom
 $(obj)/amdfw_b.rom.body: $(obj)/amdfw_b.rom
+
+$(MANIFEST_FILE): $(obj)/amdfw.rom
+cbfs-files-y += amdfw_manifest
+amdfw_manifest-file := $(MANIFEST_FILE)
+amdfw_manifest-type := raw
 
 ifeq ($(CONFIG_VBOOT_SLOTS_RW_A)$(CONFIG_VBOOT_STARTS_BEFORE_BOOTBLOCK),yy)
 cbfs-files-y += apu/amdfw_a

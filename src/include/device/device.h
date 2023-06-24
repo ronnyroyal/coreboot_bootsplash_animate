@@ -174,8 +174,6 @@ extern DEVTREE_CONST struct device * DEVTREE_CONST all_devices;
 extern struct resource	*free_resources;
 extern struct bus	*free_links;
 
-extern const char mainboard_name[];
-
 /* Generic device interface functions */
 struct device *alloc_dev(struct bus *parent, struct device_path *path);
 void dev_initialize_chips(void);
@@ -209,7 +207,7 @@ bool is_enabled_pci(const struct device *pci);
 bool is_pci_dev_on_bus(const struct device *pci, unsigned int bus);
 
 /* Returns whether there is a hotplug port on the path to the given device. */
-extern bool dev_path_hotplug(const struct device *);
+bool dev_path_hotplug(const struct device *);
 
 /* Option ROM helper functions */
 void run_bios(struct device *dev, unsigned long addr);

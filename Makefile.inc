@@ -66,8 +66,11 @@ coreboot: $(obj)/coreboot.rom $(obj)/cbfstool $(obj)/rmodtool $(obj)/ifwitool $(
 # targets after the build completes by creating a Makefile.inc in the
 # site-local directory with a target named 'build_complete::'
 build_complete:: coreboot
-	printf "\nBuilt %s (%s)\n" $(MAINBOARDDIR) \
-		$(CONFIG_MAINBOARD_PART_NUMBER)
+	printf "\nBuilt %s (%s)\n" $(MAINBOARDDIR) $(CONFIG_MAINBOARD_PART_NUMBER)
+	if [ -f "$(CCACHE_STATSLOG)" ]; then \
+		printf "\nccache statistics\n"; \
+		$(CCACHE) --show-log-stats -v; \
+	fi
 
 # This target can be used to run rules after all files were added to CBFS,
 # for example to process FMAP regions or the entire image.
@@ -327,6 +330,19 @@ define cbfs-files-processor-config
 endef
 
 #######################################################################
+# Add a file to CBFS with just type and compression values
+# arg1: name in CBFS
+# arg2: filename and path
+# arg3: type in CBFS
+# arg4: compression type
+define add-cbfs-file-simple
+	$(eval cbfs-files-y += $(1))
+	$(eval $(1)-file := $(2))
+	$(eval $(1)-type := $(3))
+	$(eval $(1)-compression := $(4))
+endef
+
+#######################################################################
 # Compile a C file with a bare struct definition into binary
 # arg1: C source file
 # arg2: binary file
@@ -435,10 +451,8 @@ ifeq ($(CONFIG_COMPILER_GCC),y)
 ifeq ($(CCC_ANALYZER_OUTPUT_FORMAT),)
 CFLAGS_common += -Wno-packed-not-aligned
 CFLAGS_common += -fconserve-stack
-CFLAGS_common += -Wnull-dereference -Wreturn-type
+CFLAGS_common += -Wnull-dereference
 CFLAGS_common += -Wlogical-op -Wduplicated-cond -Wno-array-compare
-# cf. commit f69a99db (coreboot: x86: enable gc-sections)
-CFLAGS_common += -Wno-unused-but-set-variable
 endif
 endif
 
@@ -1015,6 +1029,15 @@ else
 FMAP_VPD_ENTRY :=
 endif
 
+ifeq ($(CONFIG_INCLUDE_HSPHY_IN_FMAP),y)
+FMAP_HSPHY_FW_BASE := $(call int-align, $(FMAP_CURRENT_BASE), 0x1000)
+FMAP_HSPHY_FW_SIZE := $(CONFIG_HSPHY_FW_MAX_SIZE)
+FMAP_HSPHY_FW_ENTRY := HSPHY_FW@$(FMAP_HSPHY_FW_BASE) $(FMAP_HSPHY_FW_SIZE)
+FMAP_CURRENT_BASE := $(call int-add, $(FMAP_HSPHY_FW_BASE) $(FMAP_HSPHY_FW_SIZE))
+else
+FMAP_HSPHY_FW_ENTRY :=
+endif
+
 #
 # X86 FMAP region
 #
@@ -1093,6 +1116,7 @@ $(obj)/fmap.fmd: $(top)/Makefile.inc $(DEFAULT_FLASHMAP) $(obj)/config.h
 	    -e "s,##SMMSTORE_ENTRY##,$(FMAP_SMMSTORE_ENTRY)," \
 	    -e "s,##SPD_CACHE_ENTRY##,$(FMAP_SPD_CACHE_ENTRY)," \
 	    -e "s,##VPD_ENTRY##,$(FMAP_VPD_ENTRY)," \
+	    -e "s,##HSPHY_FW_ENTRY##,$(FMAP_HSPHY_FW_ENTRY)," \
 	    -e "s,##CBFS_BASE##,$(FMAP_CBFS_BASE)," \
 	    -e "s,##CBFS_SIZE##,$(FMAP_CBFS_SIZE)," \
 		$(DEFAULT_FLASHMAP) > $@.tmp

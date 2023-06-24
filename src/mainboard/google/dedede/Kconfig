@@ -1,6 +1,7 @@
 config BOARD_GOOGLE_BASEBOARD_DEDEDE
 	def_bool n
 	select BOARD_ROMSIZE_KB_16384 if !BOARD_ROMSIZE_KB_32768
+	select DRIVERS_AUDIO_SOF
 	select DRIVERS_GENERIC_GPIO_KEYS
 	select DRIVERS_I2C_CS42L42
 	select DRIVERS_I2C_GENERIC
@@ -114,6 +115,8 @@ config MAINBOARD_PART_NUMBER
 	default "Gooey" if BOARD_GOOGLE_GOOEY
 	default "Beadrix" if BOARD_GOOGLE_BEADRIX
 	default "Shotzo" if BOARD_GOOGLE_SHOTZO
+	default "Taranza" if BOARD_GOOGLE_TARANZA
+	default "Boxy" if BOARD_GOOGLE_BOXY
 
 config MAX_CPUS
 	int
@@ -154,6 +157,8 @@ config VARIANT_DIR
 	default "gooey" if BOARD_GOOGLE_GOOEY
 	default "beadrix" if BOARD_GOOGLE_BEADRIX
 	default "shotzo" if BOARD_GOOGLE_SHOTZO
+	default "taranza" if BOARD_GOOGLE_TARANZA
+	default "boxy" if BOARD_GOOGLE_BOXY
 
 endif #BOARD_GOOGLE_BASEBOARD_DEDEDE
 

@@ -404,7 +404,7 @@ static const struct pad_config fpmcu_gpio_table[] = {
 	/* B1  : CORE_VID1 ==> FPMCU_INT_L */
 	PAD_CFG_GPI_SCI(GPP_B1, UP_20K, DEEP, EDGE_SINGLE, INVERT),
 	/* B11 : EXT_PWR_GATE# ==> PCH_FP_PWR_EN */
-	PAD_CFG_GPO(GPP_B11, 1, DEEP),
+	PAD_CFG_GPO(GPP_B11, 0, DEEP),
 	/* B19 : GSPI1_CS# ==> PCH_SPI_FP_CS# */
 	PAD_CFG_NF(GPP_B19, NONE, DEEP, NF1),
 	/* B20 : GSPI1_CLK ==> PCH_SPI_FP_CLK */
@@ -416,7 +416,7 @@ static const struct pad_config fpmcu_gpio_table[] = {
 	/* C3  : SML0CLK ==> TOUCHSCREEN_DIS# */
 	PAD_CFG_GPO(GPP_C3, 0, DEEP),
 	/* C9  : UART0_TXD ==> FP_RST_ODL */
-	PAD_CFG_GPO(GPP_C9, 1, DEEP),
+	PAD_CFG_GPO(GPP_C9, 0, DEEP),
 	/* D5  : ISH_I2C0_SDA ==> FPMCU_BOOT0 */
 	PAD_CFG_GPO(GPP_D5, 0, DEEP),
 	/* D17 : DMIC_CLK1 ==> NC */

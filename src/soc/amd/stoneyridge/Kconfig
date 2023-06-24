@@ -260,7 +260,7 @@ config SMM_TSEG_SIZE
 
 config SMM_RESERVED_SIZE
 	hex
-	default 0x150000
+	default 0x160000
 
 config SMM_MODULE_STACK_SIZE
 	hex
@@ -268,7 +268,7 @@ config SMM_MODULE_STACK_SIZE
 
 config ACPI_CPU_STRING
 	string
-	default "\\_SB.P%03d"
+	default "P%03X"
 
 config ACPI_SSDT_PSD_INDEPENDENT
 	default n

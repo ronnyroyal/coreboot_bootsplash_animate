@@ -112,8 +112,9 @@ chip soc/amd/mendocino
 
 		register "dxio_tx_vboost_enable" = "1"
 
-		# The unit is set to one per 4ms
-		register "pwr_on_vary_bl_to_blon" = "0x1c"
+		# The unit is set to one per ms
+		register "edp_panel_t8_ms" = "112"
+		register "edp_panel_t9_ms" = "8"
 
 		device ref gpp_bridge_1 on
 			# Required so the NVMe gets placed into D3 when entering S0i3.
@@ -135,26 +136,18 @@ chip soc/amd/mendocino
 				chip drivers/usb/acpi
 					device ref xhci_1_root_hub on # XHCI1 root hub
 						chip drivers/usb/acpi
-							device ref usb3_port3 on # USB 3.1 port3
-								chip drivers/usb/acpi
-									register "desc" = ""USB3 Type-A Port A0 (MLB)""
-									register "type" = "UPC_TYPE_USB3_A"
-									register "use_custom_pld" = "true"
-									register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, LEFT, ACPI_PLD_GROUP(3, 1))"
-									device usb 3.2 on end
-								end
-							end # USB 3.1 port3
+							register "desc" = ""USB3 Type-A Port A0 (MLB)""
+							register "type" = "UPC_TYPE_USB3_A"
+							register "use_custom_pld" = "true"
+							register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, LEFT, ACPI_PLD_GROUP(3, 1))"
+							device ref usb3_port3 on end # USB 3.1 port3
 						end
 						chip drivers/usb/acpi
-							device ref usb2_port3 on # USB 2 port3
-								chip drivers/usb/acpi
-									register "desc" = ""USB2 Type-A Port A0 (MLB)""
-									register "type" = "UPC_TYPE_USB3_A"
-									register "use_custom_pld" = "true"
-									register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, LEFT, ACPI_PLD_GROUP(3, 1))"
-									device usb 2.2 on end
-								end
-							end # USB 2 port3
+							register "desc" = ""USB2 Type-A Port A0 (MLB)""
+							register "type" = "UPC_TYPE_USB3_A"
+							register "use_custom_pld" = "true"
+							register "custom_pld" = "ACPI_PLD_TYPE_A(LEFT, LEFT, ACPI_PLD_GROUP(3, 1))"
+							device ref usb2_port3 on end # USB 2 port3
 						end
 					end # XHCI1 root hub
 				end

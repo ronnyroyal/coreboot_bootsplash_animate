@@ -190,16 +190,16 @@ endif
 # are reproducible
 export LANG LC_ALL TZ SOURCE_DATE_EPOCH
 
-ifneq ($(CONFIG_MMX),y)
-CFLAGS_x86_32 += -mno-mmx
-endif
-
 ifneq ($(UNIT_TEST),1)
 include toolchain.inc
 endif
 
 strip_quotes = $(strip $(subst ",,$(subst \",,$(1))))
 # fix makefile syntax highlighting after strip macro \" "))
+
+ifneq ($(NOCOMPILE),1)
+$(shell rm -f $(CCACHE_STATSLOG))
+endif
 
 # The primary target needs to be here before we include the
 # other files

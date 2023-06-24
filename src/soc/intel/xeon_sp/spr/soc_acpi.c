@@ -47,20 +47,13 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 	fadt->preferred_pm_profile = PM_ENTERPRISE_SERVER;
 	fadt->pm2_cnt_blk = pmbase + PM2_CNT;
 	fadt->pm2_cnt_len = 1;
-	fadt->gpe0_blk = pmbase + 0x60;
-	fadt->p_lvl2_lat = ACPI_FADT_C2_NOT_SUPPORTED;
-	fadt->p_lvl3_lat = ACPI_FADT_C3_NOT_SUPPORTED;
-	fadt->duty_offset = 1;
-
-	fadt->x_pm1b_evt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
-	fadt->x_pm1b_cnt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
 
 	/* PM2 Control Registers */
 	fadt->x_pm2_cnt_blk.space_id = ACPI_ADDRESS_SPACE_IO;
 	fadt->x_pm2_cnt_blk.bit_width = fadt->pm2_cnt_len * 8;
 	fadt->x_pm2_cnt_blk.bit_offset = 0;
-	fadt->x_pm2_cnt_blk.access_size = ACPI_ACCESS_SIZE_UNDEFINED;
-	fadt->x_pm2_cnt_blk.addrl = pmbase + PM2_CNT;
+	fadt->x_pm2_cnt_blk.access_size = ACPI_ACCESS_SIZE_BYTE_ACCESS;
+	fadt->x_pm2_cnt_blk.addrl = fadt->pm2_cnt_blk;
 	fadt->x_pm2_cnt_blk.addrh = 0x0;
 
 	/* PM1 Timer Register */
@@ -68,7 +61,7 @@ void soc_fill_fadt(acpi_fadt_t *fadt)
 	fadt->x_pm_tmr_blk.bit_width = fadt->pm_tmr_len * 8;
 	fadt->x_pm_tmr_blk.bit_offset = 0;
 	fadt->x_pm_tmr_blk.access_size = ACPI_ACCESS_SIZE_DWORD_ACCESS;
-	fadt->x_pm_tmr_blk.addrl = pmbase + PM1_TMR;
+	fadt->x_pm_tmr_blk.addrl = fadt->pm_tmr_blk;
 	fadt->x_pm_tmr_blk.addrh = 0x0;
 
 	fadt->x_gpe0_blk.space_id = ACPI_ADDRESS_SPACE_IO;

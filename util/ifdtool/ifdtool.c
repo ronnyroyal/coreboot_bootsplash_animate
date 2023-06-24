@@ -95,6 +95,7 @@ static const char *const ich_chipset_names[] = {
 	"300 series Cannon Point",
 	"400 series Ice Point",
 	"500 series Tiger Point/ 600 series Alder Point",
+	"800 series Meteor Lake",
 	"C620 series Lewisburg",
 	"Denverton: C39xx",
 	NULL
@@ -241,8 +242,9 @@ static enum ich_chipset ifd2_platform_to_chipset(const int pindex)
 	case PLATFORM_TGL:
 	case PLATFORM_ADL:
 	case PLATFORM_IFD2:
-	case PLATFORM_MTL:
 		return CHIPSET_500_600_SERIES_TIGER_ALDER_POINT;
+	case PLATFORM_MTL:
+		return CHIPSET_800_SERIES_METEOR_LAKE;
 	case PLATFORM_ICL:
 		return CHIPSET_400_SERIES_ICE_POINT;
 	case PLATFORM_LBG:
@@ -457,8 +459,11 @@ static void dump_flashrom_layout(char *image, int size, const char *layout_fname
 
 	for (unsigned int i = 0; i < max_regions; i++) {
 		struct region region = get_region(frba, i);
-		/* is region invalid? */
-		if (region.size < 1)
+
+		/* A region limit of 0 is an indicator of an unused region
+		 * A region base of 7FFFh is an indicator of a reserved region
+		 */
+		if (region.limit == 0 || region.base == 0x07FFF000)
 			continue;
 
 		char buf[LAYOUT_LINELEN];
@@ -528,10 +533,14 @@ static void _decode_spi_frequency_500_series(unsigned int freq)
 
 static void decode_spi_frequency(unsigned int freq)
 {
-	if (chipset == CHIPSET_500_600_SERIES_TIGER_ALDER_POINT)
+	switch (chipset) {
+	case CHIPSET_500_600_SERIES_TIGER_ALDER_POINT:
+	case CHIPSET_800_SERIES_METEOR_LAKE:
 		_decode_spi_frequency_500_series(freq);
-	else
+		break;
+	default:
 		_decode_spi_frequency(freq);
+	}
 }
 
 static void _decode_espi_frequency(unsigned int freq)
@@ -583,10 +592,32 @@ static void _decode_espi_frequency_500_series(unsigned int freq)
 	}
 }
 
+static void _decode_espi_frequency_800_series(unsigned int freq)
+{
+	switch (freq) {
+	case ESPI_FREQUENCY_800SERIES_20MHZ:
+		printf("20MHz");
+		break;
+	case ESPI_FREQUENCY_800SERIES_25MHZ:
+		printf("25MHz");
+		break;
+	case ESPI_FREQUENCY_800SERIES_33MHZ:
+		printf("33MHz");
+		break;
+	case ESPI_FREQUENCY_800SERIES_50MHZ:
+		printf("50MHz");
+		break;
+	default:
+		printf("unknown<%x>MHz", freq);
+	}
+}
+
 static void decode_espi_frequency(unsigned int freq)
 {
 	if (chipset == CHIPSET_500_600_SERIES_TIGER_ALDER_POINT)
 		_decode_espi_frequency_500_series(freq);
+	else if (chipset == CHIPSET_800_SERIES_METEOR_LAKE)
+		_decode_espi_frequency_800_series(freq);
 	else
 		_decode_espi_frequency(freq);
 }
@@ -638,7 +669,7 @@ static int is_platform_with_pch(void)
 static int is_platform_with_100x_series_pch(void)
 {
 	if (chipset >= CHIPSET_100_200_SERIES_SUNRISE_POINT &&
-			chipset <= CHIPSET_500_600_SERIES_TIGER_ALDER_POINT)
+			chipset <= CHIPSET_800_SERIES_METEOR_LAKE)
 		return 1;
 
 	return 0;
@@ -665,6 +696,8 @@ static void dump_fcba(const struct fcba *fcba, const struct fpsba *fpsba)
 		printf("\n  Read eSPI/EC Bus Frequency:          ");
 		if (chipset == CHIPSET_500_600_SERIES_TIGER_ALDER_POINT)
 			freq = (fpsba->pchstrp[22] & 0x38) >> 3;
+		else if (chipset == CHIPSET_800_SERIES_METEOR_LAKE)
+			freq = (fpsba->pchstrp[65] & 0x38) >> 3;
 		else
 			freq = (fcba->flcomp >> 17) & 7;
 		decode_espi_frequency(freq);
@@ -961,7 +994,8 @@ static void dump_fd(char *image, int size)
 		printf("  FMSBA:   0x%x\n", ((fdb->flmap2) & 0xff) << 4);
 	}
 
-	if (chipset == CHIPSET_500_600_SERIES_TIGER_ALDER_POINT) {
+	if (chipset == CHIPSET_500_600_SERIES_TIGER_ALDER_POINT ||
+		 chipset == CHIPSET_800_SERIES_METEOR_LAKE) {
 		printf("FLMAP3:    0x%08x\n", fdb->flmap3);
 		printf("  Minor Revision ID:     0x%04x\n", (fdb->flmap3 >> 14) & 0x7f);
 		printf("  Major Revision ID:     0x%04x\n", (fdb->flmap3 >> 21) & 0x7ff);
@@ -1027,8 +1061,11 @@ static void create_fmap_template(char *image, int size, const char *layout_fname
 	struct region sorted_regions[MAX_REGIONS] = { 0 };
 	for (unsigned int i = 0; i < max_regions; i++) {
 		struct region region = get_region(frba, i);
-		/* is region invalid? */
-		if (region.size < 1)
+
+		/* A region limit of 0 is an indicator of an unused region
+		 * A region base of 7FFFh is an indicator of a reserved region
+		 */
+		if (region.limit == 0 || region.base == 0x07FFF000)
 			continue;
 
 		/* Here we decide to use the coreboot generated FMAP BIOS region, instead of
@@ -1804,6 +1841,7 @@ static void print_usage(const char *name)
 	       "                                         icl    - Ice Lake\n"
 	       "                                         ifd2   - IFDv2 Platform\n"
 	       "                                         jsl    - Jasper Lake\n"
+	       "                                         mtl    - Meteor Lake\n"
 	       "                                         sklkbl - Sky Lake/Kaby Lake\n"
 	       "                                         tgl    - Tiger Lake\n"
 	       "                                         wbg    - Wellsburg\n"

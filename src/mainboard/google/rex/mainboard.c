@@ -8,12 +8,23 @@
 #include <drivers/wwan/fm/chip.h>
 #include <ec/ec.h>
 #include <fw_config.h>
+#include <soc/ramstage.h>
 #include <stdlib.h>
 #include <vendorcode/google/chromeos/chromeos.h>
 
 WEAK_DEV_PTR(rp6_wwan);
 
 void __weak fw_config_gpio_padbased_override(struct pad_config *padbased_table)
+{
+	/* default implementation does nothing */
+}
+
+void mainboard_update_soc_chip_config(struct soc_intel_meteorlake_config *config)
+{
+	variant_update_soc_chip_config(config);
+}
+
+__weak void variant_update_soc_chip_config(struct soc_intel_meteorlake_config *config)
 {
 	/* default implementation does nothing */
 }
@@ -30,6 +41,12 @@ static void mainboard_init(void *chip_info)
 	fw_config_gpio_padbased_override(padbased_table);
 	gpio_configure_pads_with_padbased(padbased_table);
 	free(padbased_table);
+	variant_devtree_update();
+}
+
+void __weak variant_devtree_update(void)
+{
+	/* Override dev tree settings per board */
 }
 
 void __weak variant_generate_s0ix_hook(enum s0ix_entry entry)

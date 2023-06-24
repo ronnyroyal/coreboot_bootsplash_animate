@@ -219,7 +219,7 @@ typedef struct _psp_directory_table {
 	psp_directory_entry entries[];
 } __attribute__((packed, aligned(16))) psp_directory_table;
 
-#define MAX_PSP_ENTRIES 0x2f
+#define MAX_PSP_ENTRIES 0xff
 
 typedef struct _psp_combo_header {
 	uint32_t cookie;
@@ -356,8 +356,10 @@ typedef struct _amd_fw_entry {
 	/* Some files that don't have amd_fw_header have to be skipped from hashing. These files
 	   include but not limited to: *iKek*, *.tkn, *.stkn */
 	bool skip_hashing;
+	uint8_t hash_tbl_id;
 	uint32_t num_hash_entries;
 	amd_fw_entry_hash *hash_entries;
+	bool generate_manifest;
 } amd_fw_entry;
 
 /* Most PSP binaries, if not all, have the following header format. */
@@ -375,7 +377,9 @@ struct amd_fw_header {
 	uint32_t comp_size;
 	/* Starting MDN fw_id is populated instead of fw_type. */
 	uint16_t fw_id;
-	uint8_t reserved_5a[18];
+	uint8_t reserved_5a[6];
+	uint8_t version[4];
+	uint8_t reserved_64[8];
 	uint32_t size_total;
 	uint8_t reserved_70[12];
 	/* Starting MDN fw_id is populated instead of fw_type. fw_type will still be around
@@ -387,6 +391,9 @@ struct amd_fw_header {
 	uint8_t reserved_80[128];
 } __packed;
 
+/* Based on the available PSP resources and increasing number of signed PSP binaries,
+   AMD recommends to split the hash table into 3 parts for now. */
+#define MAX_NUM_HASH_TABLES 3
 struct psp_fw_hash_table {
 	uint16_t version;
 	uint16_t no_of_entries_256;

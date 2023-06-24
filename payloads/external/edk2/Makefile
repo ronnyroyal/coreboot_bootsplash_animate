@@ -30,7 +30,7 @@ BUILD_STR = -p UefiPayloadPkg/UefiPayloadPkg.dsc
 endif
 BUILD_STR += -t COREBOOT
 BUILD_STR += -D BOOTLOADER=COREBOOT
-ifneq ($(CONFIG_EDK2_VERBOSE_BUILD),y)
+ifneq ($(V),1)
 BUILD_STR += -q
 ifeq ($(CONFIG_EDK2_UEFIPAYLOAD),y)
 BUILD_STR += -s
@@ -43,10 +43,6 @@ endif
 #
 # OPTION			= DEFAULT_VALUE
 #
-# ABOVE_4G_MEMORY		= TRUE
-ifneq ($(CONFIG_EDK2_ABOVE_4G_MEMORY),y)
-BUILD_STR += -D ABOVE_4G_MEMORY=FALSE
-endif
 # BOOTSPLASH_IMAGE		= FALSE
 ifneq ($(CONFIG_EDK2_BOOTSPLASH_FILE),)
 BUILD_STR += -D BOOTSPLASH_IMAGE=TRUE
@@ -74,6 +70,10 @@ endif
 # FOLLOW_BGRT_SPEC		= FALSE
 ifeq ($(CONFIG_EDK2_FOLLOW_BGRT_SPEC),y)
 BUILD_STR += -D FOLLOW_BGRT_SPEC=TRUE
+endif
+# MAX_VARIABLE_SIZE		= 0x10000
+ifeq ($(CONFIG_SMMSTORE_V2),y)
+BUILD_STR += --pcd gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize=0x8000
 endif
 # PCIE_BASE_ADDRESS		= 0
 ifneq ($(CONFIG_ECAM_MMCONF_LENGTH),)
@@ -110,6 +110,14 @@ endif
 # SD_MMC_TIMEOUT		= 1000000
 ifneq ($(CONFIG_EDK2_SD_MMC_TIMEOUT),)
 BUILD_STR += -D SD_MMC_TIMEOUT=$(shell echo $$(( $(CONFIG_EDK2_SD_MMC_TIMEOUT) * 1000)) )
+endif
+# EDK2_SECURE_BOOT_SUPPORT      = FALSE
+ifeq ($(CONFIG_EDK2_SECURE_BOOT_SUPPORT), y)
+BUILD_STR += -D SECURE_BOOT_ENABLE=TRUE
+endif
+# PCIEXP_SUPPORT_RESIZABLE_BARS = FALSE
+ifeq ($(CONFIG_PCIEXP_SUPPORT_RESIZABLE_BARS), y)
+BUILD_STR += --pcd gEfiMdeModulePkgTokenSpaceGuid.PcdPcieResizableBarSupport=TRUE
 endif
 
 #
@@ -247,7 +255,7 @@ $(WORKSPACE)/Build/UefiPayloadPkgX64/UniversalPayload.elf: \
 	cd $(WORKSPACE); \
 		source $(EDK2_PATH)/edksetup.sh; \
 		echo -n "EDK2: Building... "; \
-		$(EDK2_PATH)/UefiPayloadPkg/UniversalPayloadBuild.sh -a IA32 -a X64 -b $(RELEASE_STR) $(BUILD_STR)
+		$(EDK2_PATH)/UefiPayloadPkg/UniversalPayloadBuild.sh -a IA32 -b $(RELEASE_STR) $(BUILD_STR)
 		if [ ! -f $@ ]; then \
 			echo "Failed!"; \
 			exit 1; \

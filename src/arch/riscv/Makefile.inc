@@ -25,15 +25,21 @@ endif
 # suffixes in ARCH_SUFFIX_riscv.
 simple_riscv_flags = $(riscv_flags)
 
+ifeq ($(CONFIG_COMPILER_GCC),y)
+MARCH_SUFFIX=$(ARCH_SUFFIX_riscv)
+else
+MARCH_SUFFIX=
+endif
+
 ifeq ($(CCC_ANALYZER_OUTPUT_FORMAT),)
-riscv_flags += -march=$(CONFIG_RISCV_ARCH)$(ARCH_SUFFIX_riscv) -mabi=$(CONFIG_RISCV_ABI) -mcmodel=$(CONFIG_RISCV_CODEMODEL)
+riscv_flags += -march=$(CONFIG_RISCV_ARCH)$(MARCH_SUFFIX) -mabi=$(CONFIG_RISCV_ABI) -mcmodel=$(CONFIG_RISCV_CODEMODEL)
 simple_riscv_flags += -march=$(CONFIG_RISCV_ARCH) -mabi=$(CONFIG_RISCV_ABI) -mcmodel=$(CONFIG_RISCV_CODEMODEL)
 else
 riscv_flags += $(_rv_flags)
 simple_riscv_flags += $(_rv_flags)
 endif
 
-riscv_asm_flags = -march=$(CONFIG_RISCV_ARCH)$(ARCH_SUFFIX_riscv) -mabi=$(CONFIG_RISCV_ABI)
+riscv_asm_flags = -march=$(CONFIG_RISCV_ARCH)$(MARCH_SUFFIX) -mabi=$(CONFIG_RISCV_ABI)
 
 COMPILER_RT_bootblock = $(shell $(GCC_bootblock) $(simple_riscv_flags) -print-libgcc-file-name)
 
@@ -172,12 +178,14 @@ OPENSBI_BUILD  := $(abspath $(obj)/3rdparty/opensbi)
 OPENSBI_TARGET := $(OPENSBI_BUILD)/platform/$(CONFIG_OPENSBI_PLATFORM)/firmware/fw_dynamic.elf
 OPENSBI := $(obj)/opensbi.elf
 
+# TODO: Building with clang has troubles finding the proper linker.
+# Always use GCC for now.
 $(OPENSBI_TARGET): $(obj)/config.h | $(OPENSBI_SOURCE)
 	printf "    MAKE       $(subst $(obj)/,,$(@))\n"
 	mkdir -p $(OPENSBI_BUILD)
 	$(MAKE) \
 		-C "$(OPENSBI_SOURCE)" \
-		CC="$(CC_ramstage) -fno-builtin" \
+		CC="$(GCC_ramstage) -fno-builtin" \
 		LD="$(LD_ramstage)" \
 		OBJCOPY="$(OBJCOPY_ramstage)" \
 		AR="$(AR_ramstage)" \

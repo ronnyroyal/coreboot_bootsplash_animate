@@ -4,13 +4,11 @@ verstage-$(CONFIG_CHROMEOS) += chromeos.c
 
 romstage-$(CONFIG_CHROMEOS) += chromeos.c
 romstage-y += romstage.c
-romstage-$(CONFIG_MAINBOARD_USE_EARLY_LIBGFXINIT) += gma-mainboard.ads
 
 ramstage-$(CONFIG_CHROMEOS) += chromeos.c
 ramstage-y += mainboard.c
 ramstage-y += ec.c
 
-VARIANT_DIR:=$(call strip_quotes,$(CONFIG_VARIANT_DIR))
 BASEBOARD_DIR:=$(call strip_quotes,$(CONFIG_BASEBOARD_DIR))
 
 subdirs-y += variants/baseboard/$(BASEBOARD_DIR)

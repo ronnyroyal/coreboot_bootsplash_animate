@@ -28,7 +28,7 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	/* EN_PP3300_WLAN */
 	PAD_GPO(GPIO_9, HIGH),
 	/* WWAN_RST */
-	PAD_GPO(GPIO_11, LOW),
+	PAD_GPO(GPIO_11, HIGH),
 	/* Unused */
 	PAD_NC(GPIO_12),
 	/* GPIO_13 - GPIO_15: Not available */
@@ -52,7 +52,7 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	PAD_NC(GPIO_24),
 	/* GPIO_25-26: Not available */
 	/* SOC_PCIE_RST1_R_L  */
-	PAD_NFO(GPIO_27, PCIE_RST1_L, HIGH),
+	PAD_NC(GPIO_27),
 	/* GPIO_28: Not available */
 	/* SD_AUX_RST */
 	PAD_GPO(GPIO_29, LOW),
@@ -68,7 +68,7 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	/* WWAN_AUX_RST_L */
 	PAD_GPO(GPIO_39, HIGH),
 	/* SOC_FP_RST_L */
-	PAD_GPO(GPIO_40, HIGH),
+	PAD_GPO(GPIO_40, LOW),
 	/* GPIO_41 - GPIO_66: Not available */
 	/* GPIO_67 (Unused) */
 	PAD_NC(GPIO_67),
@@ -76,12 +76,12 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	PAD_NF(GPIO_68, SPI1_DAT2, PULL_NONE),
 	/* ESPI1_DATA3 */
 	PAD_NF(GPIO_69, SPI1_DAT3, PULL_NONE),
-	/* SOC_CLK_FPMCU_R TODO(276939271): Selectively init */
-	PAD_NF(GPIO_70, SPI2_CLK, PULL_NONE),
+	/* SOC_CLK_FPMCU_R if SPI FP populated */
+	PAD_NC(GPIO_70),
 	/* EN_TCHSCR_REPORT */
 	PAD_GPO(GPIO_74, LOW),
-	/* SOC_CLK_FPMCU_R_L TODO(276939271): Selectively init */
-	PAD_NF(GPIO_75, SPI2_CS1_L, PULL_NONE),
+	/* SOC_CLK_FPMCU_R_L if SPI FP populated */
+	PAD_NC(GPIO_75),
 	/* Unused */
 	PAD_NC(GPIO_76),
 	/* ESPI_SOC_CLK_EC_R */
@@ -106,10 +106,10 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	PAD_GPI(GPIO_91, PULL_NONE),
 	/* CLK_REQ0_L / WLAN */
 	PAD_NF(GPIO_92, CLK_REQ0_L, PULL_NONE),
-	/* SPI_SOC_DO_FPMCU_DI_R TODO(276939271): Selectively init */
-	PAD_NF(GPIO_104, SPI2_DAT0, PULL_NONE),
-	/* SPI_SOC_DI_FPMCU_DO_R TODO(276939271): Selectively init */
-	PAD_NF(GPIO_105, SPI2_DAT1, PULL_NONE),
+	/* SPI_SOC_DO_FPMCU_DI_R if SPI FP populated */
+	PAD_NC(GPIO_104),
+	/* SPI_SOC_DI_FPMCU_DO_R if SPI FP populated */
+	PAD_NC(GPIO_105),
 	/* RAM_ID_2 */
 	PAD_GPI(GPIO_106, PULL_NONE),
 	/* RAM_ID_3 */
@@ -138,12 +138,12 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	PAD_NC(GPIO_138),
 	/* SOC_BIOS_WP_OD */
 	PAD_GPI(GPIO_139, PULL_NONE),
-	/* UART1_TXD / FPMCU TODO(276939271): Selectively init */
-	PAD_NF(GPIO_140, UART1_TXD, PULL_NONE),
+	/* UART1_TXD if UART FP populated */
+	PAD_NC(GPIO_140),
 	/* UART0_RXD / DBG */
 	PAD_NF(GPIO_141, UART0_RXD, PULL_NONE),
-	/* UART1_RXD  / FPMCU TODO(276939271): Selectively init */
-	PAD_NF(GPIO_142, UART1_RXD, PULL_NONE),
+	/* UART1_RXD if UART FP populated */
+	PAD_NC(GPIO_142),
 	/* UART0_TXD / DBG */
 	PAD_NF(GPIO_143, UART0_TXD, PULL_NONE),
 	/* EN_PP3300_TCHSCR */
@@ -168,9 +168,69 @@ static const struct soc_amd_gpio base_gpio_table[] = {
 	PAD_GPO(GPIO_157, HIGH),
 };
 
+static const struct soc_amd_gpio tpm_gpio_table[] = {
+	/* I2C2_SCL */
+	PAD_NF(GPIO_113, I2C2_SCL, PULL_NONE),
+	/* I2C2_SDA */
+	PAD_NF(GPIO_114, I2C2_SDA, PULL_NONE),
+	/* GSC_SOC_INT_L */
+	PAD_INT(GPIO_84, PULL_NONE, EDGE_LOW, STATUS_DELIVERY),
+};
+
 /* GPIO configuration in bootblock */
 static const struct soc_amd_gpio bootblock_gpio_table[] = {
-	/* TODO(b/275965982): Fill bootblock gpio configuration */
+	/* Enable WLAN */
+	/* WLAN_DISABLE */
+	PAD_GPO(GPIO_156, LOW),
+};
+
+/* Early GPIO configuration */
+static const struct soc_amd_gpio early_gpio_table[] = {
+	/* WLAN_AUX_RST_L (ACTIVE LOW) */
+	PAD_GPO(GPIO_38, LOW),
+	/* Power on WLAN */
+	/* EN_PP3300_WLAN */
+	PAD_GPO(GPIO_9, HIGH),
+};
+
+/* PCIE_RST needs to be brought high before FSP-M runs */
+static const struct soc_amd_gpio romstage_gpio_table[] = {
+	/* Deassert all AUX_RESET lines & PCIE_RST */
+	/* SD_AUX_RST */
+	PAD_GPO(GPIO_29, LOW),
+	/* SSD_AUX_RESET */
+	PAD_GPO(GPIO_31, LOW),
+	/* WLAN_AUX_RST_L (ACTIVE LOW) */
+	PAD_GPO(GPIO_38, HIGH),
+	/* WWAN_AUX_RST_L (ACTIVE LOW) */
+	PAD_GPO(GPIO_39, HIGH),
+	/* CLK_REQ0_L / WLAN */
+	PAD_NF(GPIO_92, CLK_REQ0_L, PULL_NONE),
+	/* CLK_REQ1_L / SD */
+	PAD_NF(GPIO_115, CLK_REQ1_L, PULL_NONE),
+	/* CLK_REQ2_L / WWAN */
+	PAD_NF(GPIO_116, CLK_REQ2_L, PULL_NONE),
+	/* CLK_REQ3_L / SSD */
+	PAD_NF(GPIO_131, CLK_REQ3_L, PULL_NONE),
+	/* PCIE_RST0_L */
+	PAD_NFO(GPIO_26, PCIE_RST0_L, HIGH),
+};
+
+static const struct soc_amd_gpio espi_gpio_table[] = {
+	/* ESPI_CS_L */
+	PAD_NF(GPIO_30, ESPI_CS_L, PULL_NONE),
+	/* ESPI_CLK */
+	PAD_NF(GPIO_77, SPI1_CLK, PULL_NONE),
+	/* ESPI1_DATA0 */
+	PAD_NF(GPIO_81, SPI1_DAT0, PULL_NONE),
+	/* ESPI1_DATA1 */
+	PAD_NF(GPIO_80, SPI1_DAT1, PULL_NONE),
+	/* ESPI1_DATA2 */
+	PAD_NF(GPIO_68, SPI1_DAT2, PULL_NONE),
+	/* ESPI1_DATA3 */
+	PAD_NF(GPIO_69, SPI1_DAT3, PULL_NONE),
+	/* ESPI_ALERT_L */
+	PAD_NF(GPIO_22, ESPI_ALERT_D1, PULL_NONE),
 };
 
 void baseboard_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
@@ -179,10 +239,34 @@ void baseboard_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
 	*gpio = base_gpio_table;
 }
 
+__weak void baseboard_romstage_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
+{
+	*size = ARRAY_SIZE(romstage_gpio_table);
+	*gpio = romstage_gpio_table;
+}
+
 __weak void variant_bootblock_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
 {
 	*size = ARRAY_SIZE(bootblock_gpio_table);
 	*gpio = bootblock_gpio_table;
+}
+
+__weak void variant_early_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
+{
+	*size = ARRAY_SIZE(early_gpio_table);
+	*gpio = early_gpio_table;
+}
+
+void variant_espi_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
+{
+	*size = ARRAY_SIZE(espi_gpio_table);
+	*gpio = espi_gpio_table;
+}
+
+__weak void variant_tpm_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)
+{
+	*size = ARRAY_SIZE(tpm_gpio_table);
+	*gpio = tpm_gpio_table;
 }
 
 __weak void variant_override_gpio_table(const struct soc_amd_gpio **gpio, size_t *size)

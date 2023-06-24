@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
+#include <bootsplash.h>
 #include <console/console.h>
 #include <cpu/intel/microcode.h>
 #include <delay.h>
@@ -648,7 +649,7 @@ static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 
 	/* D3Hot and D3Cold for TCSS */
 	s_cfg->D3HotEnable = !config->tcss_d3_hot_disable;
-	s_cfg->D3ColdEnable = CONFIG(D3COLD_SUPPORT) && !config->tcss_d3_cold_disable;
+	s_cfg->D3ColdEnable = CONFIG(D3COLD_SUPPORT);
 
 	s_cfg->UsbTcPortEn = 0;
 	for (int i = 0; i < MAX_TYPE_C_PORTS; i++) {
@@ -1011,6 +1012,11 @@ static void fill_fsps_misc_power_params(FSP_S_CONFIG *s_cfg,
 		s_cfg->PkgCStateDemotion = 0;
 	else
 		s_cfg->PkgCStateDemotion = !config->disable_package_c_state_demotion;
+
+	if (cpu_id == CPUID_RAPTORLAKE_P_J0 || cpu_id == CPUID_RAPTORLAKE_P_Q0)
+		s_cfg->C1e = 0;
+	else
+		s_cfg->C1e = 1;
 }
 
 static void fill_fsps_irq_params(FSP_S_CONFIG *s_cfg,
@@ -1304,4 +1310,10 @@ void platform_fsp_multi_phase_init_cb(uint32_t phase_index)
 __weak void mainboard_silicon_init_params(FSP_S_CONFIG *s_cfg)
 {
 	printk(BIOS_DEBUG, "WEAK: %s/%s called\n", __FILE__, __func__);
+}
+
+/* Handle FSP logo params */
+void soc_load_logo(FSPS_UPD *supd)
+{
+	bmp_load_logo(&supd->FspsConfig.LogoPtr, &supd->FspsConfig.LogoSize);
 }

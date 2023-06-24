@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
+#include <bootsplash.h>
 #include <cbfs.h>
 #include <console/console.h>
 #include <cpu/intel/cpu_ids.h>
@@ -40,6 +41,8 @@
 /* SATA DEVSLP idle timeout default values */
 #define DEF_DMVAL	15
 #define DEF_DITOVAL	625
+
+#define MAX_ONBOARD_PCIE_DEVICES 256
 
 static const struct slot_irq_constraints irq_constraints[] = {
 	{
@@ -410,10 +413,10 @@ static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
 	const struct device *tcss_port_arr[] = {
+		DEV_PTR(tcss_usb3_port0),
 		DEV_PTR(tcss_usb3_port1),
 		DEV_PTR(tcss_usb3_port2),
 		DEV_PTR(tcss_usb3_port3),
-		DEV_PTR(tcss_usb3_port4),
 	};
 
 	s_cfg->TcssAuxOri = config->tcss_aux_ori;
@@ -423,7 +426,7 @@ static void fill_fsps_tcss_params(FSP_S_CONFIG *s_cfg,
 
 	/* D3Hot and D3Cold for TCSS */
 	s_cfg->D3HotEnable = !config->tcss_d3_hot_disable;
-	s_cfg->D3ColdEnable = !config->tcss_d3_cold_disable;
+	s_cfg->D3ColdEnable = CONFIG(D3COLD_SUPPORT);
 	s_cfg->UsbTcPortEn = 0;
 
 	for (int i = 0; i < MAX_TYPE_C_PORTS; i++) {
@@ -562,12 +565,22 @@ static void fill_fsps_cnvi_params(FSP_S_CONFIG *s_cfg,
 {
 	/* CNVi */
 	s_cfg->CnviMode = is_devfn_enabled(PCI_DEVFN_CNVI_WIFI);
+	s_cfg->CnviWifiCore = config->cnvi_wifi_core;
 	s_cfg->CnviBtCore = config->cnvi_bt_core;
 	s_cfg->CnviBtAudioOffload = config->cnvi_bt_audio_offload;
-	/* Assert if CNVi BT is enabled without CNVi being enabled. */
-	assert(s_cfg->CnviMode || !s_cfg->CnviBtCore);
-	/* Assert if CNVi BT offload is enabled without CNVi BT being enabled. */
-	assert(s_cfg->CnviBtCore || !s_cfg->CnviBtAudioOffload);
+	if (!s_cfg->CnviMode && s_cfg->CnviWifiCore) {
+		printk(BIOS_ERR, "CNVi WiFi is enabled without CNVi being enabled\n");
+		s_cfg->CnviWifiCore = 0;
+	}
+	if (!s_cfg->CnviBtCore && s_cfg->CnviBtAudioOffload) {
+		printk(BIOS_ERR, "BT offload is enabled without CNVi BT being enabled\n");
+		s_cfg->CnviBtAudioOffload = 0;
+	}
+	if (!s_cfg->CnviMode && s_cfg->CnviBtCore) {
+		printk(BIOS_ERR, "CNVi BT is enabled without CNVi being enabled\n");
+		s_cfg->CnviBtCore = 0;
+		s_cfg->CnviBtAudioOffload = 0;
+	}
 }
 
 static void fill_fsps_vmd_params(FSP_S_CONFIG *s_cfg,
@@ -690,6 +703,70 @@ static void arch_silicon_init_params(FSPS_ARCH_UPD *s_arch_cfg)
 				fsp_debug_event_handler;
 }
 
+static void evaluate_ssid(const struct device *dev, uint16_t *svid, uint16_t *ssid)
+{
+	if (!(dev && svid && ssid))
+		return;
+
+	*svid = CONFIG_SUBSYSTEM_VENDOR_ID ? : (dev->subsystem_vendor ? : 0x8086);
+	*ssid = CONFIG_SUBSYSTEM_DEVICE_ID ? : (dev->subsystem_device ? : 0xfffe);
+}
+
+/*
+ * Programming SSID before FSP-S is important because SSID registers of a few PCIE
+ * devices (e.g. IPU, Crashlog, XHCI, TCSS_XHCI etc.) are locked after FSP-S hence
+ * provide a custom SSID (same as DID by default) value via UPD.
+ */
+static void fill_fsps_pci_ssid_params(FSP_S_CONFIG *s_cfg,
+		const struct soc_intel_meteorlake_config *config)
+{
+	struct svid_ssid_init_entry {
+		union {
+			struct {
+				uint64_t reg:12;
+				uint64_t function:3;
+				uint64_t device:5;
+				uint64_t bus:8;
+				uint64_t ignore1:4;
+				uint64_t segment:16;
+				uint64_t ignore2:16;
+			};
+			uint64_t data;
+		};
+		struct {
+			uint16_t svid;
+			uint16_t ssid;
+		};
+		uint32_t ignore3;
+	};
+
+	static struct svid_ssid_init_entry ssid_table[MAX_ONBOARD_PCIE_DEVICES];
+	const struct device *dev;
+	int i = 0;
+
+	for (dev = all_devices; dev; dev = dev->next) {
+		if (!(is_dev_enabled(dev) && dev->path.type == DEVICE_PATH_PCI &&
+		    dev->bus->secondary == 0))
+			continue;
+
+		if (dev->path.pci.devfn == PCI_DEVFN_ROOT) {
+			evaluate_ssid(dev, &s_cfg->SiCustomizedSvid, &s_cfg->SiCustomizedSsid);
+		} else {
+			ssid_table[i].reg	= PCI_SUBSYSTEM_VENDOR_ID;
+			ssid_table[i].device	= PCI_SLOT(dev->path.pci.devfn);
+			ssid_table[i].function	= PCI_FUNC(dev->path.pci.devfn);
+			evaluate_ssid(dev, &ssid_table[i].svid, &ssid_table[i].ssid);
+			i++;
+		}
+	}
+
+	s_cfg->SiSsidTablePtr = (uintptr_t)ssid_table;
+	s_cfg->SiNumberOfSsidTableEntry = i;
+
+	/* Ensure FSP will program the registers */
+	s_cfg->SiSkipSsidProgramming = 0;
+}
+
 static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		struct soc_intel_meteorlake_config *config)
 {
@@ -719,6 +796,7 @@ static void soc_silicon_init_params(FSP_S_CONFIG *s_cfg,
 		fill_fsps_ufs_params,
 		fill_fsps_ai_params,
 		fill_fsps_irq_params,
+		fill_fsps_pci_ssid_params,
 	};
 
 	for (size_t i = 0; i < ARRAY_SIZE(fill_fsps_params); i++)
@@ -776,4 +854,10 @@ void platform_fsp_multi_phase_init_cb(uint32_t phase_index)
 __weak void mainboard_silicon_init_params(FSP_S_CONFIG *s_cfg)
 {
 	printk(BIOS_DEBUG, "WEAK: %s/%s called\n", __FILE__, __func__);
+}
+
+/* Handle FSP logo params */
+void soc_load_logo(FSPS_UPD *supd)
+{
+	bmp_load_logo(&supd->FspsConfig.LogoPtr, &supd->FspsConfig.LogoSize);
 }

@@ -33,8 +33,6 @@
 #include <x86intrin.h>
 #endif
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -1001,7 +999,7 @@ static void dump_console(enum console_print_type type, int max_loglevel, int pri
 		for (size_t i = 0; !cursor && i < ARRAY_SIZE(regex); i++) {
 			regex_t re;
 			regmatch_t match;
-			int res = regcomp(&re, regex[i], REG_EXTENDED);
+			int res = regcomp(&re, regex[i], REG_EXTENDED | REG_NEWLINE);
 			assert(res == 0);
 
 			/* Keep looking for matches so we find the last one. */

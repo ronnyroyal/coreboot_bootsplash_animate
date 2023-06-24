@@ -391,7 +391,7 @@ void acpigen_set_package_element_namestr(const char *package, unsigned int eleme
 void acpigen_write_processor_namestring(unsigned int cpu_index)
 {
 	char buffer[16];
-	snprintf(buffer, sizeof(buffer), CONFIG_ACPI_CPU_STRING, cpu_index);
+	snprintf(buffer, sizeof(buffer), "\\_SB." CONFIG_ACPI_CPU_STRING, cpu_index);
 	acpigen_emit_namestring(buffer);
 }
 
@@ -711,7 +711,7 @@ void acpigen_write_empty_PCT(void)
 	acpigen_emit_stream(stream, ARRAY_SIZE(stream));
 }
 
-void acpigen_write_empty_PTC(void)
+void acpigen_write_PTC(uint8_t duty_width, uint8_t duty_offset, uint16_t p_cnt)
 {
 /*
 	Name (_PTC, Package (0x02)
@@ -719,30 +719,34 @@ void acpigen_write_empty_PTC(void)
 		ResourceTemplate ()
 		{
 			Register (FFixedHW,
-				0x00,               // Bit Width
-				0x00,               // Bit Offset
-				0x0000000000000000, // Address
+				0x00,               // Duty Width
+				0x00,               // Duty Offset
+				0x0000000000000000, // P_CNT IO Address
 				,)
 		},
 
 		ResourceTemplate ()
 		{
 			Register (FFixedHW,
-				0x00,               // Bit Width
-				0x00,               // Bit Offset
-				0x0000000000000000, // Address
+				0x00,               // Duty Width
+				0x00,               // Duty Offset
+				0x0000000000000000, // P_CNT IO Address
 				,)
 		}
 	})
 */
 	acpi_addr_t addr = {
-		.space_id    = ACPI_ADDRESS_SPACE_FIXED,
-		.bit_width   = 0,
-		.bit_offset  = 0,
+		.bit_width   = duty_width,
+		.bit_offset  = duty_offset,
 		.access_size = ACPI_ACCESS_SIZE_UNDEFINED,
-		.addrl       = 0,
+		.addrl       = p_cnt,
 		.addrh       = 0,
 	};
+
+	if (addr.addrl != 0)
+		addr.space_id = ACPI_ADDRESS_SPACE_IO;
+	else
+		addr.space_id = ACPI_ADDRESS_SPACE_FIXED;
 
 	acpigen_write_name("_PTC");
 	acpigen_write_package(2);
@@ -754,6 +758,11 @@ void acpigen_write_empty_PTC(void)
 	acpigen_write_register_resource(&addr);
 
 	acpigen_pop_len();
+}
+
+void acpigen_write_empty_PTC(void)
+{
+	acpigen_write_PTC(0, 0, 0);
 }
 
 static void __acpigen_write_method(const char *name, uint8_t flags)
@@ -809,6 +818,17 @@ void acpigen_write_STA_ext(const char *namestring)
 	acpigen_write_method("_STA", 0);
 	acpigen_emit_byte(RETURN_OP);
 	acpigen_emit_namestring(namestring);
+	acpigen_pop_len();
+}
+
+void acpigen_write_BBN(uint8_t base_bus_number)
+{
+	/*
+	 * Method (_BBN, 0, NotSerialized) { Return (status) }
+	 */
+	acpigen_write_method("_BBN", 0);
+	acpigen_emit_byte(RETURN_OP);
+	acpigen_write_byte(base_bus_number);
 	acpigen_pop_len();
 }
 
@@ -1428,24 +1448,6 @@ void acpigen_write_not(uint8_t arg, uint8_t res)
 	acpigen_emit_byte(res);
 }
 
-/* Concatenate (str1, str2, res) */
-void acpigen_concatenate_string_string(const char *str1, const char *str2, uint8_t res)
-{
-	acpigen_emit_byte(CONCATENATE_OP);
-	acpigen_write_string(str1);
-	acpigen_write_string(str2);
-	acpigen_emit_byte(res);
-}
-
-/* Concatenate (str, val, tmp_res) */
-void acpigen_concatenate_string_int(const char *str, uint64_t val, uint8_t res)
-{
-	acpigen_emit_byte(CONCATENATE_OP);
-	acpigen_write_string(str);
-	acpigen_write_integer(val);
-	acpigen_emit_byte(res);
-}
-
 /* Concatenate (str, src_res, dest_res) */
 void acpigen_concatenate_string_op(const char *str, uint8_t src_res, uint8_t dest_res)
 {
@@ -1487,24 +1489,6 @@ void acpigen_write_debug_namestr(const char *str)
 	acpigen_emit_ext_op(DEBUG_OP);
 }
 
-/* Concatenate (str1, str2, tmp_res)
-   Store(tmp_res, DEBUG) */
-void acpigen_write_debug_concatenate_string_string(const char *str1, const char *str2,
-	uint8_t tmp_res)
-{
-	acpigen_concatenate_string_string(str1, str2, tmp_res);
-	acpigen_write_debug_op(tmp_res);
-}
-
-/* Concatenate (str1, val, tmp_res)
-   Store(tmp_res, DEBUG) */
-void acpigen_write_debug_concatenate_string_int(const char *str, uint64_t val,
-	uint8_t tmp_res)
-{
-	acpigen_concatenate_string_int(str, val, tmp_res);
-	acpigen_write_debug_op(tmp_res);
-}
-
 /* Concatenate (str1, res, tmp_res)
    Store(tmp_res, DEBUG) */
 void acpigen_write_debug_concatenate_string_op(const char *str, uint8_t res,
@@ -1512,6 +1496,27 @@ void acpigen_write_debug_concatenate_string_op(const char *str, uint8_t res,
 {
 	acpigen_concatenate_string_op(str, res, tmp_res);
 	acpigen_write_debug_op(tmp_res);
+}
+
+static void acpigen_tx_byte(unsigned char byte, void *data)
+{
+	acpigen_emit_byte(byte);
+}
+
+/* Store("formatted string", DEBUG) */
+void acpigen_write_debug_sprintf(const char *fmt, ...)
+{
+	va_list args;
+
+	acpigen_write_store();
+
+	acpigen_emit_byte(STRING_PREFIX);
+	va_start(args, fmt);
+	vtxprintf(acpigen_tx_byte, fmt, args, NULL);
+	va_end(args);
+	acpigen_emit_byte('\0');
+
+	acpigen_emit_ext_op(DEBUG_OP);
 }
 
 void acpigen_write_if(void)
@@ -1919,7 +1924,8 @@ void acpigen_write_CPPC_package(const struct cppc_config *config)
 void acpigen_write_CPPC_method(void)
 {
 	char pscope[16];
-	snprintf(pscope, sizeof(pscope), CONFIG_ACPI_CPU_STRING "." CPPC_PACKAGE_NAME, 0);
+	snprintf(pscope, sizeof(pscope),
+		 "\\_SB." CONFIG_ACPI_CPU_STRING "." CPPC_PACKAGE_NAME, 0);
 
 	acpigen_write_method("_CPC", 0);
 	acpigen_emit_byte(RETURN_OP);
@@ -2146,6 +2152,7 @@ void acpigen_get_tx_gpio(const struct acpi_gpio *gpio)
 void acpigen_resource_word(u16 res_type, u16 gen_flags, u16 type_flags, u16 gran, u16 range_min,
 			   u16 range_max, u16 translation, u16 length)
 {
+	/* Byte 0: Type 1, Large Item Value 0x8: Word Address Space Descriptor */
 	acpigen_emit_byte(0x88);
 	/* Byte 1+2: length (0x000d) */
 	acpigen_emit_byte(0x0d);
@@ -2169,6 +2176,7 @@ void acpigen_resource_word(u16 res_type, u16 gen_flags, u16 type_flags, u16 gran
 void acpigen_resource_dword(u16 res_type, u16 gen_flags, u16 type_flags, u32 gran,
 			    u32 range_min, u32 range_max, u32 translation, u32 length)
 {
+	/* Byte 0: Type 1, Large Item Value 0x7: DWord Address Space Descriptor */
 	acpigen_emit_byte(0x87);
 	/* Byte 1+2: length (0023) */
 	acpigen_emit_byte(23);
@@ -2198,6 +2206,7 @@ static void acpigen_emit_qword(u64 data)
 void acpigen_resource_qword(u16 res_type, u16 gen_flags, u16 type_flags, u64 gran,
 			    u64 range_min, u64 range_max, u64 translation, u64 length)
 {
+	/* Byte 0: Type 1, Large Item Value 0xa: QWord Address Space Descriptor */
 	acpigen_emit_byte(0x8a);
 	/* Byte 1+2: length (0x002b) */
 	acpigen_emit_byte(0x2b);
@@ -2215,6 +2224,74 @@ void acpigen_resource_qword(u16 res_type, u16 gen_flags, u16 type_flags, u64 gra
 	acpigen_emit_qword(range_max);
 	acpigen_emit_qword(translation);
 	acpigen_emit_qword(length);
+}
+
+void acpigen_resource_producer_bus_number(u16 bus_base, u16 bus_limit)
+{
+	acpigen_resource_word(RSRC_TYPE_BUS, /* res_type */
+			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS
+			      | ADDR_SPACE_GENERAL_FLAG_PRODUCER, /* gen_flags */
+			      BUS_NUM_RANGE_RESOURCE_FLAG, /* type_flags */
+			      0, /* gran */
+			      bus_base, /* range_min */
+			      bus_limit, /* range_max */
+			      0x0, /* translation */
+			      bus_limit - bus_base + 1); /* length */
+}
+
+void acpigen_resource_producer_io(u16 io_base, u16 io_limit)
+{
+	acpigen_resource_dword(RSRC_TYPE_IO, /* res_type */
+			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS
+			      | ADDR_SPACE_GENERAL_FLAG_PRODUCER, /* gen_flags */
+			      IO_RSRC_FLAG_ENTIRE_RANGE, /* type_flags */
+			      0, /* gran */
+			      io_base, /* range_min */
+			      io_limit, /* range_max */
+			      0x0, /* translation */
+			      io_limit - io_base + 1); /* length */
+}
+
+static void acpigen_resource_producer_mmio32(u32 mmio_base, u32 mmio_limit, u16 type_flags)
+{
+	acpigen_resource_dword(RSRC_TYPE_MEM, /* res_type */
+			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS
+			      | ADDR_SPACE_GENERAL_FLAG_PRODUCER, /* gen_flags */
+			      type_flags, /* type_flags */
+			      0, /* gran */
+			      mmio_base, /* range_min */
+			      mmio_limit, /* range_max */
+			      0x0, /* translation */
+			      mmio_limit - mmio_base + 1); /* length */
+}
+
+static void acpigen_resource_producer_mmio64(u64 mmio_base, u64 mmio_limit, u16 type_flags)
+{
+	acpigen_resource_qword(RSRC_TYPE_MEM, /* res_type */
+			      ADDR_SPACE_GENERAL_FLAG_MAX_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_MIN_FIXED
+			      | ADDR_SPACE_GENERAL_FLAG_DEC_POS
+			      | ADDR_SPACE_GENERAL_FLAG_PRODUCER, /* gen_flags */
+			      type_flags, /* type_flags */
+			      0, /* gran */
+			      mmio_base, /* range_min */
+			      mmio_limit, /* range_max */
+			      0x0, /* translation */
+			      mmio_limit - mmio_base + 1); /* length */
+}
+
+void acpigen_resource_producer_mmio(u64 mmio_base, u64 mmio_limit, u16 type_flags)
+{
+	if (mmio_base < 4ULL * GiB && mmio_limit < 4ULL * GiB)
+		acpigen_resource_producer_mmio32(mmio_base, mmio_limit, type_flags);
+	else
+		acpigen_resource_producer_mmio64(mmio_base, mmio_limit, type_flags);
 }
 
 void acpigen_write_ADR(uint64_t adr)
@@ -2354,4 +2431,25 @@ void acpigen_write_delay_until_namestr_int(uint32_t wait_ms, const char *name, u
 	acpigen_emit_byte(DECREMENT_OP);
 	acpigen_emit_byte(LOCAL7_OP);
 	acpigen_pop_len(); /* While */
+
+	if (name) {
+		acpigen_write_if_lequal_op_op(LOCAL7_OP, ZERO_OP);
+		acpigen_write_debug_sprintf("WARN: Wait loop timeout for variable %s",
+					    name);
+		acpigen_pop_len(); /* If */
+	}
+}
+
+void acpigen_ssdt_override_sleep_states(bool enable_s1, bool enable_s2, bool enable_s3,
+					bool enable_s4)
+{
+	assert(!(enable_s1 && CONFIG(ACPI_S1_NOT_SUPPORTED)));
+	assert(!(enable_s3 && !CONFIG(HAVE_ACPI_RESUME)));
+	assert(!(enable_s4 && CONFIG(DISABLE_ACPI_HIBERNATE)));
+
+	acpigen_write_scope("\\");
+	uint32_t sleep_enable = (enable_s1 << 0) | (enable_s2 << 1)
+		| (enable_s3 << 2) | (enable_s4 << 3);
+	acpigen_write_name_dword("OSFG", sleep_enable);
+	acpigen_pop_len();
 }

@@ -45,6 +45,45 @@ config SOC_INTEL_COMMON_BLOCK_HECI1_DISABLE_USING_PCR
 	  Use this config for SoC platform prior to CNL PCH (with postboot_sai implemented)
 	  to make `HECI1` device disable using private configuration register (PCR) write.
 
+config SOC_INTEL_STORE_CSE_FW_VERSION
+	bool
+	default n
+	depends on SOC_INTEL_CSE_LITE_SKU
+	help
+	  This configuration option stores CSE RW FW version in CBMEM area.
+	  This information can be used to identify if the CSE firmware update is successful
+	  by comparing the currently running CSE RW firmware version against CSE version
+	  belongs to the CONFIG_SOC_INTEL_CSE_RW_VERSION (decided statically while
+	  building the AP FW image).
+
+	  The way to retrieve the CSE firmware version is by sending the HECI command to
+	  read the CSE Boot Partition (BP) info. The cost of sending HECI command to read
+	  the CSE FW version is between 7ms-20ms (depending on the SoC architecture) hence,
+	  ensure this feature is platform specific and only enabled for the platform
+	  that would like to store the CSE version into the CBMEM.
+
+config SOC_INTEL_STORE_ISH_FW_VERSION
+	bool
+	default n
+	depends on DRIVERS_INTEL_ISH
+	help
+	  This configuration option stores ISH version in CBMEM area.
+	  This information can be used to identify the currently running ISH firmware
+	  version.
+
+	  ISH BUP is sitting inside the CSE firmware partition. The way to retrieve the
+	  ISH version is by sending the HECI command to read the CSE FPT. The cost of sending
+	  HECI command to read the CSE FPT is significant (~200ms) hence, the idea is to
+	  read the CSE RW version on every cold reset (to cover the CSE update scenarios)
+	  and store into CBMEM to avoid the cost of resending the HECI command in all
+	  consecutive warm boots.
+
+	  Later boot stages can just read the CBMEM ID to retrieve the ISH version.
+
+	  Additionally, ensure this feature is platform specific hence, only enabled
+	  for the platform that would like to store the ISH version into the CBMEM and
+	  parse to perform some additional work.
+
 config SOC_INTEL_CSE_SEND_EOP_EARLY
 	bool "CSE send EOP early"
 	depends on SOC_INTEL_COMMON_BLOCK_CSE
@@ -201,6 +240,7 @@ config SOC_INTEL_CSE_LITE_COMPRESS_ME_RW
 	bool
 	default n
 	depends on SOC_INTEL_CSE_LITE_SKU
+	select CBFS_ALLOW_UNVERIFIED_DECOMPRESSION if CBFS_VERIFICATION && !VBOOT_CBFS_INTEGRATION
 	help
 	 Enable compression on Intel CSE CBFS RW blob
 
@@ -227,7 +267,7 @@ config SOC_INTEL_CSE_PRE_CPU_RESET_TELEMETRY_V2
 
 config SOC_INTEL_CSE_LITE_SYNC_IN_ROMSTAGE
 	bool
-	default y
+	default !SOC_INTEL_CSE_LITE_SYNC_IN_RAMSTAGE
 	depends on SOC_INTEL_CSE_LITE_SKU && !SOC_INTEL_CSE_LITE_COMPRESS_ME_RW
 	help
 	 Use default flow of CSE FW Update in romstage when uncompressed ME_RW blobs are used.
@@ -235,9 +275,8 @@ config SOC_INTEL_CSE_LITE_SYNC_IN_ROMSTAGE
 config SOC_INTEL_CSE_LITE_SYNC_IN_RAMSTAGE
 	bool
 	default n
-	depends on SOC_INTEL_CSE_LITE_COMPRESS_ME_RW
 	help
-	 Use this option for CSE FW Update when compressed blobs are used.
+	 Use this option if CSE RW update needs to be triggered during RAMSTAGE.
 
 config SOC_INTEL_CSE_HAVE_SPEC_SUPPORT
 	bool

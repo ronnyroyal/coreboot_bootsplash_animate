@@ -1,7 +1,27 @@
 config SOC_INTEL_METEORLAKE
 	bool
 	help
-	  Intel Meteorlake support
+	  Intel Meteorlake support. Mainboards should specify the SoC
+	  type using the `SOC_INTEL_METEORLAKE_*` options instead
+	  of selecting this option directly.
+
+config SOC_INTEL_METEORLAKE_U_H
+	bool
+	select SOC_INTEL_METEORLAKE
+	help
+	  Choose this option if your mainboard has a MTL-U (9W or 15W)
+	  or MTL-H (28W or 45W) SoC.
+
+	  Note, the MTL-U/H-Processor Line offered in a 1-Chip Platform
+	  that includes the Compute, SOC, GT, and IOE tile on the same
+	  package.
+
+config SOC_INTEL_METEORLAKE_S
+	bool
+	select SOC_INTEL_METEORLAKE
+	help
+	  Choose this option if your mainboard has a MTL-S (35W or 65W) SoC.
+	  Note, MTL-S SoC combines Compute, GFX, SoC, IOE and PCH die.
 
 if SOC_INTEL_METEORLAKE
 
@@ -89,7 +109,7 @@ config CPU_SPECIFIC_OPTIONS
 	select SOC_INTEL_COMMON_PCH_CLIENT
 	select SOC_INTEL_COMMON_RESET
 	select SOC_INTEL_COMMON_BLOCK_IOC
-	select SOC_INTEL_CSE_SEND_EOP_LATE
+	select SOC_INTEL_CSE_SEND_EOP_LATE if !MAINBOARD_HAS_CHROMEOS
 	select SOC_INTEL_CSE_SET_EOP
 	select SOC_INTEL_GFX_NON_PREFETCHABLE_MMIO
 	select SOC_INTEL_MEM_MAPPED_PM_CONFIGURATION
@@ -97,9 +117,10 @@ config CPU_SPECIFIC_OPTIONS
 	select SUPPORT_CPU_UCODE_IN_CBFS
 	select TSC_MONOTONIC_TIMER
 	select UDELAY_TSC
-	select UDK_202111_BINDING
+	select UDK_202302_BINDING
 	select X86_CLFLUSH_CAR
 	select X86_INIT_NEED_1_SIPI
+	select INTEL_KEYLOCKER
 
 config SOC_INTEL_METEORLAKE_TCSS_USB4_SUPPORT
 	bool
@@ -301,12 +322,12 @@ config CBFS_SIZE
 
 config PRERAM_CBMEM_CONSOLE_SIZE
 	hex
-	default 0x16000 if CONSOLE_SERIAL
+	default 0x16000 if BUILDING_WITH_DEBUG_FSP
 	default 0x2000
 
 config CONSOLE_CBMEM_BUFFER_SIZE
 	hex
-	default 0x100000 if CONSOLE_SERIAL
+	default 0x100000 if BUILDING_WITH_DEBUG_FSP
 	default 0x40000
 
 config FSP_HEADER_PATH
@@ -366,7 +387,7 @@ config BUILDING_WITH_DEBUG_FSP
 
 config DROP_CPU_FEATURE_PROGRAM_IN_FSP
 	bool
-	default y if MP_SERVICES_PPI_V2_NOOP
+	default y if MP_SERVICES_PPI_V2_NOOP || CHROMEOS
 	default n
 	help
 	  This is to avoid FSP running basic CPU feature programming on BSP
@@ -384,5 +405,17 @@ config DROP_CPU_FEATURE_PROGRAM_IN_FSP
 
 	  This feature is default enabled, in case of "coreboot running MP init"
 	  aka MP_SERVICES_PPI_V2_NOOP config is selected.
+
+config PCIE_LTR_MAX_SNOOP_LATENCY
+	hex
+	default 0x100f
+	help
+	  Latency tolerance reporting, max snoop latency value defaults to 15.73 ms.
+
+config PCIE_LTR_MAX_NO_SNOOP_LATENCY
+	hex
+	default 0x100f
+	help
+	  Latency tolerance reporting, max non-snoop latency value defaults to 15.73 ms.
 
 endif

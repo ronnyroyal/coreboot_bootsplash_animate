@@ -364,6 +364,13 @@ static atomic_t *load_sipi_vector(struct mp_params *mp_params)
 	ap_count = &sp->ap_count;
 	atomic_set(ap_count, 0);
 
+	/* Make sure SIPI data hits RAM so the APs that come up will see the
+	   startup code even if the caches are disabled. */
+	if (clflush_supported())
+		clflush_region((uintptr_t)mod_loc, module_size);
+	else
+		wbinvd();
+
 	return ap_count;
 }
 
@@ -554,6 +561,7 @@ static enum cb_err init_bsp(struct bus *cpu_bus)
 		return CB_ERR;
 	}
 	bsp->path.apic.initial_lapicid = initial_lapicid();
+	set_cpu_topology_from_leaf_b(bsp);
 
 	/* Find the device structure for the boot CPU. */
 	set_cpu_info(0, bsp);
@@ -624,10 +632,6 @@ static enum cb_err mp_init(struct bus *cpu_bus, struct mp_params *p)
 	ap_count = load_sipi_vector(p);
 	if (ap_count == NULL)
 		return CB_ERR;
-
-	/* Make sure SIPI data hits RAM so the APs that come up will see
-	 * the startup code even if the caches are disabled.  */
-	wbinvd();
 
 	/* Start the APs providing number of APs and the cpus_entered field. */
 	global_num_aps = p->num_cpus - 1;

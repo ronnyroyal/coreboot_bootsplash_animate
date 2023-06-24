@@ -1,11 +1,13 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <assert.h>
+#include <amdblocks/acpi.h>
 #include <amdblocks/biosram.h>
 #include <amdblocks/hda.h>
 #include <device/pci_ops.h>
 #include <arch/hpet.h>
 #include <arch/ioapic.h>
+#include <arch/vga.h>
 #include <acpi/acpi.h>
 #include <acpi/acpigen.h>
 #include <cbmem.h>
@@ -49,9 +51,9 @@ static void set_mmio_addr_reg(u32 nodeid, u32 linkn, u32 reg, u32 index,
 
 	/* io range allocation.  Limit */
 	tempreg = (nodeid & 0xf) | (linkn << 4) | (mmio_max & 0xffffff00);
-		pci_write_config32(SOC_ADDR_DEV, reg + 4, tempreg);
+	pci_write_config32(SOC_ADDR_DEV, reg + 4, tempreg);
 	tempreg = 3 | (nodeid & 0x30) | (mmio_min & 0xffffff00);
-		pci_write_config32(SOC_ADDR_DEV, reg, tempreg);
+	pci_write_config32(SOC_ADDR_DEV, reg, tempreg);
 }
 
 static void read_resources(struct device *dev)
@@ -166,6 +168,31 @@ static void northbridge_init(struct device *dev)
 	register_new_ioapic((u8 *)IO_APIC2_ADDR);
 }
 
+/* Used by \_SB.PCI0._CRS */
+static void acpi_fill_root_complex_tom(const struct device *device)
+{
+	const char *scope;
+
+	assert(device);
+
+	scope = acpi_device_scope(device);
+	assert(scope);
+	acpigen_write_scope(scope);
+
+	acpigen_write_name_dword("TOM1", get_top_of_mem_below_4gb());
+
+	/*
+	 * Since XP only implements parts of ACPI 2.0, we can't use a qword
+	 * here.
+	 * See http://www.acpi.info/presentations/S01USMOBS169_OS%2520new.ppt
+	 * slide 22ff.
+	 * Shift value right by 20 bit to make it fit into 32bit,
+	 * giving us 1MB granularity and a limit of almost 4Exabyte of memory.
+	 */
+	acpigen_write_name_dword("TOM2", get_top_of_mem_above_4gb() >> 20);
+	acpigen_pop_len();
+}
+
 static unsigned long acpi_fill_hest(acpi_hest_t *hest)
 {
 	void *addr, *current;
@@ -184,27 +211,6 @@ static unsigned long acpi_fill_hest(acpi_hest_t *hest)
 				(void *)((u32)addr + 2), *(uint16_t *)addr - 2);
 
 	return (unsigned long)current;
-}
-
-static void northbridge_fill_ssdt_generator(const struct device *device)
-{
-	msr_t msr;
-	char pscope[] = "\\_SB.PCI0";
-
-	acpigen_write_scope(pscope);
-	msr = rdmsr(TOP_MEM);
-	acpigen_write_name_dword("TOM1", msr.lo);
-	msr = rdmsr(TOP_MEM2);
-	/*
-	 * Since XP only implements parts of ACPI 2.0, we can't use a qword
-	 * here.
-	 * See http://www.acpi.info/presentations/S01USMOBS169_OS%2520new.ppt
-	 * slide 22ff.
-	 * Shift value right by 20 bit to make it fit into 32bit,
-	 * giving us 1MB granularity and a limit of almost 4Exabyte of memory.
-	 */
-	acpigen_write_name_dword("TOM2", (msr.hi << 12) | msr.lo >> 20);
-	acpigen_pop_len();
 }
 
 static unsigned long agesa_write_acpi_tables(const struct device *device,
@@ -285,7 +291,7 @@ struct device_operations stoneyridge_northbridge_operations = {
 	.set_resources	  = set_resources,
 	.enable_resources = pci_dev_enable_resources,
 	.init		  = northbridge_init,
-	.acpi_fill_ssdt   = northbridge_fill_ssdt_generator,
+	.acpi_fill_ssdt   = acpi_fill_root_complex_tom,
 	.write_acpi_tables = agesa_write_acpi_tables,
 };
 
@@ -296,7 +302,7 @@ struct device_operations stoneyridge_northbridge_operations = {
  */
 void amd_initcpuio(void)
 {
-	uintptr_t topmem = amd_topmem();
+	uintptr_t topmem = get_top_of_mem_below_4gb();
 	uintptr_t base, limit;
 
 	/* Enable legacy video routing: D18F1xF4 VGA Enable */
@@ -347,18 +353,20 @@ void domain_read_resources(struct device *dev)
 	uint64_t uma_base = get_uma_base();
 	uint32_t uma_size = get_uma_size();
 	uint32_t mem_useable = (uintptr_t)cbmem_top();
-	msr_t tom = rdmsr(TOP_MEM);
-	msr_t high_tom = rdmsr(TOP_MEM2);
+	uint32_t tom = get_top_of_mem_below_4gb();
+	uint64_t high_tom = get_top_of_mem_above_4gb();
 	uint64_t high_mem_useable;
 	int idx = 0x10;
 
 	pci_domain_read_resources(dev);
 
+	fixed_io_range_reserved(dev, idx++, PCI_IO_CONFIG_INDEX, PCI_IO_CONFIG_PORT_COUNT);
+
 	/* 0x0 -> 0x9ffff */
 	ram_resource_kb(dev, idx++, 0, 0xa0000 / KiB);
 
 	/* 0xa0000 -> 0xbffff: legacy VGA */
-	mmio_resource_kb(dev, idx++, 0xa0000 / KiB, 0x20000 / KiB);
+	mmio_resource_kb(dev, idx++, VGA_MMIO_BASE / KiB, VGA_MMIO_SIZE / KiB);
 
 	/* 0xc0000 -> 0xfffff: Option ROM */
 	reserved_ram_resource_kb(dev, idx++, 0xc0000 / KiB, 0x40000 / KiB);
@@ -372,16 +380,15 @@ void domain_read_resources(struct device *dev)
 
 	/* Low top usable RAM -> Low top RAM (bottom pci mmio hole) */
 	reserved_ram_resource_kb(dev, idx++, mem_useable / KiB,
-					(tom.lo - mem_useable) / KiB);
+					(tom - mem_useable) / KiB);
 
 	/* If there is memory above 4GiB */
-	if (high_tom.hi) {
+	if (high_tom >> 32) {
 		/* 4GiB -> high top usable */
 		if (uma_base >= (4ull * GiB))
 			high_mem_useable = uma_base;
 		else
-			high_mem_useable = ((uint64_t)high_tom.lo |
-						((uint64_t)high_tom.hi << 32));
+			high_mem_useable = high_tom;
 
 		ram_resource_kb(dev, idx++, (4ull * GiB) / KiB,
 				((high_mem_useable - (4ull * GiB)) / KiB));

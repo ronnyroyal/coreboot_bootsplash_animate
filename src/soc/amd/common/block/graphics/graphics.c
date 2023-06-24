@@ -157,11 +157,21 @@ static void graphics_set_resources(struct device *const dev)
 		return;
 	}
 	rom = pci_rom_probe(dev);
-	if (rom == NULL)
+	if (rom == NULL) {
+		printk(BIOS_ERR, "%s: Unable to find ROM for %s\n",
+		       __func__, dev_path(dev));
+		timestamp_add_now(TS_OPROM_COPY_END);
 		return;
+	}
+
 	ram = pci_rom_load(dev, rom);
-	if (ram == NULL)
-		return;
+	if (ram == NULL) {
+		printk(BIOS_ERR, "%s: Unable to load ROM for %s\n",
+		       __func__, dev_path(dev));
+	}
+
+	pci_rom_free(rom);
+
 	timestamp_add_now(TS_OPROM_COPY_END);
 }
 
@@ -257,11 +267,13 @@ void vbios_load_from_cache(void)
 /*
  * Return true if VBIOS cache data is valid
  *
- * Compare hash of data with hash stored in TPM NVRAM
+ * Compare first 2 bytes of data with known signature
+ * and hash of data with hash stored in TPM NVRAM
  */
 bool vbios_cache_is_valid(void)
 {
-	return vbios_cache_verify_hash(vbios_data, VBIOS_CACHE_FMAP_SIZE) == CB_SUCCESS;
+	bool sig_valid = vbios_data[0] == 0x55 && vbios_data[1] == 0xaa;
+	return sig_valid && vbios_cache_verify_hash(vbios_data, VBIOS_CACHE_FMAP_SIZE) == CB_SUCCESS;
 }
 
 BOOT_STATE_INIT_ENTRY(BS_PRE_DEVICE, BS_ON_EXIT, read_vbios_cache_from_fmap, NULL);

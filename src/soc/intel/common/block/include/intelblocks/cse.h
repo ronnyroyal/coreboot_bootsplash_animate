@@ -8,11 +8,13 @@
 #include <vb2_api.h>
 
 /* MKHI Command groups */
-#define MKHI_GROUP_ID_CBM	0x0
-#define MKHI_GROUP_ID_HMRFPO	0x5
-#define MKHI_GROUP_ID_GEN	0xff
-#define MKHI_GROUP_ID_BUP_COMMON	0xf0
-#define MKHI_GROUP_ID_FWCAPS	0x3
+enum mkhi_group_id {
+	MKHI_GROUP_ID_CBM	 = 0x0,
+	MKHI_GROUP_ID_HMRFPO	 = 0x5,
+	MKHI_GROUP_ID_GEN	 = 0xff,
+	MKHI_GROUP_ID_BUP_COMMON = 0xf0,
+	MKHI_GROUP_ID_FWCAPS	 = 0x3,
+};
 
 /* Global Reset Command ID */
 #define MKHI_CBM_GLOBAL_RESET_REQ	0xb
@@ -49,6 +51,7 @@
 #define MKHI_BUP_COMMON_GET_BOOT_PARTITION_INFO	0x1c
 #define MKHI_BUP_COMMON_SET_BOOT_PARTITION_INFO	0x1d
 #define MKHI_BUP_COMMON_DATA_CLEAR		0x20
+#define GEN_GET_IMAGE_FW_VERSION	0x1c
 
 /* Get boot performance command id */
 #define MKHI_BUP_COMMON_GET_BOOT_PERF_DATA	0x8
@@ -68,9 +71,11 @@
 #define ME_DISABLE_ATTEMPTS	3
 
 /* ME Firmware SKU Types */
-#define ME_HFS3_FW_SKU_CONSUMER	0x2
-#define ME_HFS3_FW_SKU_CORPORATE	0x3
-#define ME_HFS3_FW_SKU_LITE	0x5
+enum me_fw_sku {
+	ME_HFS3_FW_SKU_CONSUMER	 = 0x2,
+	ME_HFS3_FW_SKU_CORPORATE = 0x3,
+	ME_HFS3_FW_SKU_LITE	 = 0x5,
+};
 
 /* Number of cse boot performance data */
 #define NUM_CSE_BOOT_PERF_DATA	64
@@ -83,6 +88,12 @@ enum {
 	PCI_ME_HFSTS4 = 0x64,
 	PCI_ME_HFSTS5 = 0x68,
 	PCI_ME_HFSTS6 = 0x6C,
+};
+
+/* CSE partition list */
+enum fpt_partition_id {
+	FPT_PARTITION_NAME_UNDEFINED = 0x0,
+	FPT_PARTITION_NAME_ISHC = 0x43485349,
 };
 
 /* MKHI Message Header */
@@ -117,6 +128,37 @@ struct me_fw_ver_resp {
 	struct me_version rec;
 	struct me_version fitc;
 } __packed;
+
+/* Module data from manifest */
+struct flash_partition_data {
+	enum fpt_partition_id partition_id;
+	uint8_t reserved1[8];
+	struct fw_version version;
+	uint32_t vendor_id;
+	uint32_t tcb_svn;
+	uint32_t arb_svn;
+	uint32_t vcn;
+	uint32_t reserved2[13];
+};
+
+/* Response header for partition information request */
+struct fw_version_resp {
+	struct mkhi_hdr hdr;
+	uint32_t module_count;
+	struct flash_partition_data manifest_data;
+};
+
+/* ISHC version */
+struct cse_fw_ish_version_info {
+	struct fw_version prev_cse_fw_version;
+	struct fw_version cur_ish_fw_version;
+};
+
+/* CSE and ISHC version */
+struct cse_fw_partition_info {
+	struct fw_version cur_cse_fw_version;
+	struct cse_fw_ish_version_info ish_partition_info;
+};
 
 /* CSE RX and TX error status */
 enum cse_tx_rx_status {
@@ -474,6 +516,27 @@ void cse_late_finalize(void);
  * different across SoC generation.
  */
 void soc_disable_heci1_using_pcr(void);
+
+/*
+ * SoC override API to identify if ISH Firmware existed inside CSE FPT.
+ *
+ * This override is required to avoid making default call into non-ISH
+ * supported SKU to attempt to retrieve ISH version which would results into
+ * increased boot time by 100ms+.
+ *
+ * Ideally SoC with UFS enabled would like to keep ISH enabled as well, hence
+ * identifying the UFS enabled device is enough to conclude if ISH partition is
+ * available.
+ */
+#if CONFIG(SOC_INTEL_STORE_ISH_FW_VERSION)
+bool soc_is_ish_partition_enabled(void);
+#else
+static inline bool soc_is_ish_partition_enabled(void)
+{
+	/* Default implementation, ISH not enabled. */
+	return false;
+}
+#endif
 
 /*
  * Injects CSE timestamps into cbmem timestamp table. SoC code needs to

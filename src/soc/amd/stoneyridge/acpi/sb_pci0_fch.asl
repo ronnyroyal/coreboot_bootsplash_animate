@@ -1,26 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <amdblocks/alib.h>
+#include <arch/vga.h>
 
 External(\_SB.ALIB, MethodObj)
 
 /* System Bus */
 /*  _SB.PCI0 */
-
-/* Operating System Capabilities Method */
-Method(_OSC,4)
-{
-	/* Check for proper PCI/PCIe UUID */
-	If (Arg0 == ToUUID("33DB4D5B-1FF7-401C-9657-7441C03DD766"))
-	{
-		/* Let OS control everything */
-		Return (Arg3)
-	} Else {
-		CreateDWordField(Arg3,0,CDW1)
-		CDW1 |= 4	// Unrecognized UUID
-		Return (Arg3)
-	}
-}
 
 /* Describe the Southbridge devices */
 
@@ -86,7 +72,7 @@ Name(CRES, ResourceTemplate() {
 		0xf300		/* length */
 	)
 
-	Memory32Fixed(READONLY, 0x000a0000, 0x00020000, VGAM)	/* VGA memory space */
+	Memory32Fixed(READONLY, VGA_MMIO_BASE, VGA_MMIO_SIZE, VGAM)	/* VGA memory space */
 	Memory32Fixed(READONLY, 0x000c0000, 0x00020000, EMM1)	/* Assume C0000-E0000 empty */
 
 	/* memory space for PCI BARs below 4GB */
@@ -98,18 +84,16 @@ Method(_CRS, 0) {
 	CreateDWordField(CRES, ^MMIO._BAS, MM1B)
 	CreateDWordField(CRES, ^MMIO._LEN, MM1L)
 
-	/*
-	 * Declare memory between TOM1 and 4GB as available
-	 * for PCI MMIO.
-	 * Use ShiftLeft to avoid 64bit constant (for XP).
-	 * This will work even if the OS does 32bit arithmetic, as
-	 * 32bit (0x00000000 - TOM1) will wrap and give the same
-	 * result as 64bit (0x100000000 - TOM1).
-	 */
+	/* Declare memory between TOM1 and MMCONF as available for PCI MMIO. */
 	MM1B = TOM1
-	Local0 = 0x10000000 << 4
+	Local0 = CONFIG_ECAM_MMCONF_BASE_ADDRESS
 	Local0 -= TOM1
 	MM1L = Local0
+
+	CreateWordField(CRES, ^PSB0._MAX, BMAX)
+	CreateWordField(CRES, ^PSB0._LEN, BLEN)
+	BMAX = CONFIG_ECAM_MMCONF_BUS_NUMBER - 1
+	BLEN = CONFIG_ECAM_MMCONF_BUS_NUMBER
 
 	Return (CRES) /* note to change the Name buffer */
 } /* end of Method(_SB.PCI0._CRS) */

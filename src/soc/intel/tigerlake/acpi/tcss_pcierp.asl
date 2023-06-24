@@ -251,7 +251,7 @@ Method (_S0W, 0x0, NotSerialized)
 	Return (0x4)
 #else
 	Return (0x3)
-#endif	// SOC_INTEL_ALDERLAKE_S3
+#endif	// D3COLD_SUPPORT
 }
 
 Method (_PR0)

@@ -23,8 +23,8 @@
 #include "chip.h"
 
 /* Initialize to all zero first */
-static UPD_IIO_PCIE_PORT_CONFIG spr_iio_bifur_table[CONFIG_MAX_SOCKET_UPD];
-static UINT8 deemphasis_list[CONFIG_MAX_SOCKET_UPD * MAX_IIO_PORTS_PER_SOCKET];
+static UPD_IIO_PCIE_PORT_CONFIG spr_iio_bifur_table[MAX_SOCKET];
+static UINT8 deemphasis_list[MAX_SOCKET * MAX_IIO_PORTS_PER_SOCKET];
 
 void __weak mainboard_memory_init_params(FSPM_UPD *mupd)
 {
@@ -119,12 +119,12 @@ static void initialize_iio_upd(FSPM_UPD *mupd)
 	unsigned int port, socket;
 
 	mupd->FspmConfig.IioPcieConfigTablePtr = (UINT32)spr_iio_bifur_table;
-	mupd->FspmConfig.IioPcieConfigTableNumber = CONFIG_MAX_SOCKET_UPD;
+	mupd->FspmConfig.IioPcieConfigTableNumber = MAX_SOCKET;
 	UPD_IIO_PCIE_PORT_CONFIG *PciePortConfig =
 		(UPD_IIO_PCIE_PORT_CONFIG *)spr_iio_bifur_table;
 
 	/* Initialize non-zero default UPD values */
-	for (socket = 0; socket < CONFIG_MAX_SOCKET_UPD; socket++) {
+	for (socket = 0; socket < MAX_SOCKET; socket++) {
 		for (port = 0; port < MAX_IIO_PORTS_PER_SOCKET; port++) {
 			PciePortConfig[socket].PcieMaxPayload[port] = 0x7;     /* Auto */
 			PciePortConfig[socket].DfxDnTxPresetGen3[port] = 0xff; /* Auto */
@@ -134,10 +134,10 @@ static void initialize_iio_upd(FSPM_UPD *mupd)
 	}
 
 	mupd->FspmConfig.DeEmphasisPtr = (UINT32)deemphasis_list;
-	mupd->FspmConfig.DeEmphasisNumber = CONFIG_MAX_SOCKET_UPD * MAX_IIO_PORTS_PER_SOCKET;
+	mupd->FspmConfig.DeEmphasisNumber = MAX_SOCKET * MAX_IIO_PORTS_PER_SOCKET;
 	UINT8 *DeEmphasisConfig = (UINT8 *)deemphasis_list;
 
-	for (port = 0; port < CONFIG_MAX_SOCKET_UPD * MAX_IIO_PORTS_PER_SOCKET; port++)
+	for (port = 0; port < MAX_SOCKET * MAX_IIO_PORTS_PER_SOCKET; port++)
 		DeEmphasisConfig[port] = 0x1;
 }
 
@@ -200,6 +200,30 @@ void platform_fsp_memory_init_params_cb(FSPM_UPD *mupd, uint32_t version)
 		config_upd_from_vpd(mupd);
 	initialize_iio_upd(mupd);
 	mainboard_memory_init_params(mupd);
+
+	if (CONFIG(ENABLE_IO_MARGINING)) {
+		printk(BIOS_INFO, "IO Margining Enabled.\n");
+		/* Needed for IO Margining */
+		mupd->FspmConfig.DFXEnable = 1;
+
+		UPD_IIO_PCIE_PORT_CONFIG *iio_pcie_cfg;
+		int socket;
+
+		iio_pcie_cfg = (UPD_IIO_PCIE_PORT_CONFIG *)mupd->FspmConfig.IioPcieConfigTablePtr;
+
+		for (socket = 0; socket < MAX_SOCKET; socket++)
+			iio_pcie_cfg[socket].PcieGlobalAspm = 0;
+
+		mupd->FspmConfig.KtiLinkL1En = 0;
+		mupd->FspmConfig.KtiLinkL0pEn = 0;
+	}
+
+	if (CONFIG(ENABLE_RMT)) {
+		printk(BIOS_INFO, "RMT Enabled.\n");
+		mupd->FspmConfig.EnableRMT = 0x1;
+		/* Set FSP debug message to Max for RMT logs */
+		mupd->FspmConfig.serialDebugMsgLvl = 0x3;
+	}
 }
 
 static uint8_t get_error_correction_type(const uint8_t RasModesEnabled)
@@ -280,9 +304,7 @@ void save_dimm_info(void)
 					   the board. */
 					continue;
 				}
-				dest_dimm->max_speed_mts =
-					get_max_memory_speed(src_dimm.commonTck);
-				dest_dimm->configured_speed_mts = hob->memFreq;
+
 				dest_dimm->soc_num = soc;
 
 				if (hob->DramType == SPD_TYPE_DDR5) {
@@ -304,7 +326,8 @@ void save_dimm_info(void)
 					sizeof(src_dimm.PartNumber),
 					(const uint8_t *)&src_dimm.serialNumber[0], data_width,
 					vdd_voltage, true, /* hard-coded as ECC supported */
-					src_dimm.VendorID, src_dimm.actKeyByte2, 0);
+					src_dimm.VendorID, src_dimm.actKeyByte2, 0,
+					get_max_memory_speed(src_dimm.commonTck));
 				dimm_num++;
 			}
 		}

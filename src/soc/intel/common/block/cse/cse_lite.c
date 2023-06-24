@@ -630,39 +630,51 @@ static bool read_ver_field(const char *start, char **curr, size_t size, uint16_t
 	return true;
 }
 
+static enum cb_err get_cse_ver_from_cbfs(struct fw_version *cbfs_rw_version)
+{
+	char *version_str, *cbfs_ptr;
+	size_t size;
+
+	if (cbfs_rw_version == NULL)
+		return CB_ERR;
+
+	cbfs_ptr = cbfs_map(CONFIG_SOC_INTEL_CSE_RW_VERSION_CBFS_NAME, &size);
+	version_str = cbfs_ptr;
+	if (!version_str) {
+		printk(BIOS_ERR, "cse_lite: Failed to get %s\n",
+			  CONFIG_SOC_INTEL_CSE_RW_VERSION_CBFS_NAME);
+		return CB_ERR;
+	}
+
+	if (!read_ver_field(version_str, &cbfs_ptr, size, &cbfs_rw_version->major) ||
+	    !read_ver_field(version_str, &cbfs_ptr, size, &cbfs_rw_version->minor) ||
+		!read_ver_field(version_str, &cbfs_ptr, size, &cbfs_rw_version->hotfix) ||
+		!read_ver_field(version_str, &cbfs_ptr, size, &cbfs_rw_version->build)) {
+		cbfs_unmap(version_str);
+		return CB_ERR;
+	}
+
+	cbfs_unmap(version_str);
+	return CB_SUCCESS;
+}
+
 static enum cse_update_status cse_check_update_status(const struct cse_bp_info *cse_bp_info,
-						      struct region_device *target_rdev)
+							struct region_device *target_rdev)
 {
 	int ret;
 	struct fw_version cbfs_rw_version;
-	char *version_str, *ptr;
-	size_t size;
 
 	if (!cse_is_rw_bp_sign_valid(target_rdev))
 		return CSE_UPDATE_CORRUPTED;
 
-	ptr = version_str = cbfs_map(CONFIG_SOC_INTEL_CSE_RW_VERSION_CBFS_NAME, &size);
-	if (!version_str) {
-		printk(BIOS_ERR, "cse_lite: Failed to get %s\n",
-		       CONFIG_SOC_INTEL_CSE_RW_VERSION_CBFS_NAME);
+	if (get_cse_ver_from_cbfs(&cbfs_rw_version) == CB_ERR)
 		return CSE_UPDATE_METADATA_ERROR;
-	}
-
-	if (!read_ver_field(version_str, &ptr, size, &cbfs_rw_version.major) ||
-	    !read_ver_field(version_str, &ptr, size, &cbfs_rw_version.minor) ||
-	    !read_ver_field(version_str, &ptr, size, &cbfs_rw_version.hotfix) ||
-	    !read_ver_field(version_str, &ptr, size, &cbfs_rw_version.build)) {
-		cbfs_unmap(version_str);
-		return CSE_UPDATE_METADATA_ERROR;
-	}
 
 	printk(BIOS_DEBUG, "cse_lite: CSE CBFS RW version : %d.%d.%d.%d\n",
 			cbfs_rw_version.major,
 			cbfs_rw_version.minor,
 			cbfs_rw_version.hotfix,
 			cbfs_rw_version.build);
-
-	cbfs_unmap(version_str);
 
 	ret = cse_compare_sub_part_version(&cbfs_rw_version, cse_get_rw_version(cse_bp_info));
 	if (ret == 0)
@@ -1077,7 +1089,7 @@ static enum csme_failure_reason cse_sub_part_fw_update(const struct cse_bp_info 
 	return handle_cse_sub_part_fw_update_rv(rv);
 }
 
-void cse_fw_sync(void)
+static void do_cse_fw_sync(void)
 {
 	static struct get_bp_info_rsp cse_bp_info;
 
@@ -1152,16 +1164,154 @@ void cse_fw_sync(void)
 	}
 }
 
-static void ramstage_cse_fw_sync(void *unused)
+void cse_fw_sync(void)
 {
-	bool s3wake;
-	s3wake = acpi_get_sleep_type() == ACPI_S3;
+	timestamp_add_now(TS_CSE_FW_SYNC_START);
+	do_cse_fw_sync();
+	timestamp_add_now(TS_CSE_FW_SYNC_END);
+}
 
-	if (CONFIG(SOC_INTEL_CSE_LITE_SYNC_IN_RAMSTAGE) && !s3wake) {
-		timestamp_add_now(TS_CSE_FW_SYNC_START);
-		cse_fw_sync();
-		timestamp_add_now(TS_CSE_FW_SYNC_END);
+/*
+ * Helper function that stores current CSE firmware version to CBMEM memory,
+ * except during recovery mode.
+ */
+static void cse_store_rw_fw_version(void)
+{
+	if (vboot_recovery_mode_enabled())
+		return;
+
+	struct get_bp_info_rsp cse_bp_info;
+	if (cse_get_bp_info(&cse_bp_info) != CB_SUCCESS) {
+		printk(BIOS_ERR, "cse_lite: Failed to get CSE boot partition info\n");
+		return;
+	}
+	const struct cse_bp_entry *cse_bp = cse_get_bp_entry(RW, &cse_bp_info.bp_info);
+	struct cse_fw_partition_info *version;
+	version = cbmem_add(CBMEM_ID_CSE_PARTITION_VERSION, sizeof(*version));
+	memcpy(&(version->cur_cse_fw_version), &(cse_bp->fw_ver), sizeof(struct fw_version));
+}
+
+static enum cb_err send_get_fpt_partition_info_cmd(enum fpt_partition_id id,
+	struct fw_version_resp *resp)
+{
+	enum cse_tx_rx_status ret;
+	struct fw_version_msg {
+		struct mkhi_hdr hdr;
+		enum fpt_partition_id partition_id;
+	} __packed msg = {
+		.hdr = {
+			.group_id = MKHI_GROUP_ID_GEN,
+			.command = GEN_GET_IMAGE_FW_VERSION,
+		},
+		.partition_id = id,
+	};
+
+	/*
+	 * Prerequisites:
+	 * 1) HFSTS1 CWS is Normal
+	 * 2) HFSTS1 COM is Normal
+	 * 3) Only sent after DID (accomplished by compiling this into ramstage)
+	 */
+
+	if (cse_is_hfs1_com_soft_temp_disable() || !cse_is_hfs1_cws_normal() ||
+		!cse_is_hfs1_com_normal()) {
+		printk(BIOS_ERR,
+			"HECI: Prerequisites not met for Get Image Firmware Version command\n");
+		return CB_ERR;
+	}
+
+	size_t resp_size = sizeof(struct fw_version_resp);
+	ret = heci_send_receive(&msg, sizeof(msg), resp, &resp_size, HECI_MKHI_ADDR);
+
+	if (ret || resp->hdr.result) {
+		printk(BIOS_ERR, "CSE: Failed to get partition information for %d: 0x%x\n",
+			id, resp->hdr.result);
+		return CB_ERR;
+	}
+
+	return CB_SUCCESS;
+}
+
+static enum cb_err cse_get_fpt_partition_info(enum fpt_partition_id id,
+		 struct fw_version_resp *resp)
+{
+	if (vboot_recovery_mode_enabled()) {
+		printk(BIOS_WARNING,
+			"CSE: Skip sending Get Image Info command during recovery mode!\n");
+		return CB_ERR;
+	}
+
+	if (id == FPT_PARTITION_NAME_ISHC && !CONFIG(DRIVERS_INTEL_ISH)) {
+		printk(BIOS_WARNING, "CSE: Info request denied, no ISH partition\n");
+		return CB_ERR;
+	}
+
+	return send_get_fpt_partition_info_cmd(id, resp);
+}
+
+/*
+ * Helper function to read ISH version from CSE FPT using HECI command.
+ *
+ * The HECI command only be executed after memory has been initialized.
+ * This is because the command relies on resources that are not available
+ * until DRAM initialization command has been sent.
+ */
+static void store_ish_version(void)
+{
+	if (!ENV_RAMSTAGE)
+		return;
+
+	if (vboot_recovery_mode_enabled())
+		return;
+
+	struct cse_fw_partition_info *version;
+	size_t size = sizeof(struct fw_version);
+	version = cbmem_find(CBMEM_ID_CSE_PARTITION_VERSION);
+	if (version == NULL)
+		return;
+
+	/*
+	 * Compare if stored cse version (from the previous boot) is same as current
+	 * running cse version.
+	 */
+	if (memcmp(&version->ish_partition_info.prev_cse_fw_version,
+		&version->cur_cse_fw_version, sizeof(struct fw_version))) {
+		/*
+		 * Current running CSE version is different than previous stored CSE version
+		 * which could be due to CSE update or rollback, hence, need to send ISHC
+		 * partition info cmd to know the currently running ISH version.
+		 */
+
+		struct fw_version_resp resp;
+		if (cse_get_fpt_partition_info(FPT_PARTITION_NAME_ISHC, &resp) == CB_SUCCESS) {
+			/* Update stored cse version with current version */
+			memcpy(&(version->ish_partition_info.prev_cse_fw_version),
+				&(version->cur_cse_fw_version), size);
+
+			/* Since cse version has been updated, ish version needs to be updated. */
+			memcpy(&(version->ish_partition_info.cur_ish_fw_version),
+				&(resp.manifest_data.version), size);
+		}
 	}
 }
 
-BOOT_STATE_INIT_ENTRY(BS_PRE_DEVICE, BS_ON_EXIT, ramstage_cse_fw_sync, NULL);
+static void ramstage_cse_misc_ops(void *unused)
+{
+	if (acpi_get_sleep_type() == ACPI_S3)
+		return;
+
+	if (CONFIG(SOC_INTEL_CSE_LITE_SYNC_IN_RAMSTAGE))
+		cse_fw_sync();
+
+	/* Store the CSE RW Firmware Version into CBMEM */
+	if (CONFIG(SOC_INTEL_STORE_CSE_FW_VERSION))
+		cse_store_rw_fw_version();
+	/*
+	 * Store the ISH RW Firmware Version into CBMEM if ISH partition
+	 * is available
+	 */
+	if (soc_is_ish_partition_enabled())
+		store_ish_version();
+}
+
+BOOT_STATE_INIT_ENTRY(BS_PRE_DEVICE, BS_ON_EXIT, ramstage_cse_misc_ops, NULL);

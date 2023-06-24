@@ -154,8 +154,8 @@ enum ddi_ports {
 };
 
 enum ddi_port_flags {
-	DDI_ENABLE_DDC = 1 << 0,
-	DDI_ENABLE_HPD = 1 << 1,
+	DDI_ENABLE_DDC = 1 << 0, // Display Data Channel
+	DDI_ENABLE_HPD = 1 << 1, // Hot Plug Detect
 };
 
 /*
@@ -275,8 +275,6 @@ struct soc_intel_alderlake_config {
 	int s0ix_enable;
 	/* Support for TCSS xhci, xdci, TBT PCIe root ports and DMA controllers */
 	uint8_t tcss_d3_hot_disable;
-	/* Support for TBT PCIe root ports and DMA controllers with D3Hot->D3Cold */
-	uint8_t tcss_d3_cold_disable;
 	/* Enable DPTF support */
 	int dptf_enable;
 

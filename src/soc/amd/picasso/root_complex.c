@@ -3,9 +3,12 @@
 #include <acpi/acpigen.h>
 #include <amdblocks/acpi.h>
 #include <amdblocks/alib.h>
+#include <amdblocks/data_fabric.h>
 #include <amdblocks/memmap.h>
 #include <amdblocks/ioapic.h>
+#include <amdblocks/iomap.h>
 #include <arch/ioapic.h>
+#include <arch/vga.h>
 #include <assert.h>
 #include <cbmem.h>
 #include <console/console.h>
@@ -104,7 +107,6 @@ static void read_resources(struct device *dev)
 	unsigned int idx = 0;
 	const struct hob_header *hob_iterator;
 	const struct hob_resource *res;
-	struct resource *gnb_apic;
 
 	uintptr_t early_reserved_dram_start, early_reserved_dram_end;
 	const struct memmap_early_dram *e = memmap_get_early_dram_usage();
@@ -115,11 +117,13 @@ static void read_resources(struct device *dev)
 	/* The root complex has no PCI BARs implemented, so there's no need to call
 	   pci_dev_read_resources for it */
 
+	fixed_io_range_reserved(dev, idx++, PCI_IO_CONFIG_INDEX, PCI_IO_CONFIG_PORT_COUNT);
+
 	/* 0x0 - 0x9ffff */
 	ram_resource_kb(dev, idx++, 0, 0xa0000 / KiB);
 
 	/* 0xa0000 - 0xbffff: legacy VGA */
-	mmio_resource_kb(dev, idx++, 0xa0000 / KiB, 0x20000 / KiB);
+	mmio_resource_kb(dev, idx++, VGA_MMIO_BASE / KiB, VGA_MMIO_SIZE / KiB);
 
 	/* 0xc0000 - 0xfffff: Option ROM */
 	reserved_ram_resource_kb(dev, idx++, 0xc0000 / KiB, 0x40000 / KiB);
@@ -140,10 +144,10 @@ static void read_resources(struct device *dev)
 	mmconf_resource(dev, idx++);
 
 	/* GNB IOAPIC resource */
-	gnb_apic = new_resource(dev, idx++);
-	gnb_apic->base = GNB_IO_APIC_ADDR;
-	gnb_apic->size = 0x00001000;
-	gnb_apic->flags = IORESOURCE_MEM | IORESOURCE_ASSIGNED | IORESOURCE_FIXED;
+	mmio_range(dev, IOMMU_IOAPIC_IDX, GNB_IO_APIC_ADDR, 0x1000);
+
+	/* Reserve fixed IOMMU MMIO region */
+	mmio_range(dev, idx++, IOMMU_RESERVED_MMIO_BASE, IOMMU_RESERVED_MMIO_SIZE);
 
 	if (fsp_hob_iterator_init(&hob_iterator) != CB_SUCCESS) {
 		printk(BIOS_ERR, "%s incomplete because no HOB list was found\n", __func__);
@@ -194,7 +198,6 @@ static void acipgen_dptci(void)
 
 static void root_complex_fill_ssdt(const struct device *device)
 {
-	acpi_fill_root_complex_tom(device);
 	if (CONFIG(SOC_AMD_COMMON_BLOCK_ACPI_DPTC))
 		acipgen_dptci();
 }
