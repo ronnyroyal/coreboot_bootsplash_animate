@@ -69,6 +69,7 @@ static unsigned long ivhd_dev_range(unsigned long current, uint16_t start_devid,
 	/* 4-byte IVHD structures must be aligned to the 4-byte boundary. */
 	current = ALIGN_UP(current, 4);
 	ivrs_ivhd_generic_t *ivhd_range = (ivrs_ivhd_generic_t *)current;
+	memset(ivhd_range, 0, sizeof(*ivhd_range));
 
 	/* Create the start range IVHD entry */
 	ivhd_range->type = IVHD_DEV_4_BYTE_START_RANGE;
@@ -93,6 +94,7 @@ static unsigned long add_ivhd_dev_entry(struct device *parent, struct device *de
 		/* 4-byte IVHD structures must be aligned to the 4-byte boundary. */
 		*current = ALIGN_UP(*current, 4);
 		ivrs_ivhd_generic_t *ivhd_entry = (ivrs_ivhd_generic_t *)*current;
+		memset(ivhd_entry, 0, sizeof(*ivhd_entry));
 
 		ivhd_entry->type = type;
 		ivhd_entry->dev_id = dev->path.pci.devfn | (dev->bus->secondary << 8);
@@ -100,6 +102,7 @@ static unsigned long add_ivhd_dev_entry(struct device *parent, struct device *de
 		*current += sizeof(ivrs_ivhd_generic_t);
 	} else if (type == IVHD_DEV_8_BYTE_ALIAS_SELECT) {
 		ivrs_ivhd_alias_t *ivhd_entry = (ivrs_ivhd_alias_t *)*current;
+		memset(ivhd_entry, 0, sizeof(*ivhd_entry));
 
 		ivhd_entry->type = type;
 		ivhd_entry->dev_id = dev->path.pci.devfn | (dev->bus->secondary << 8);
@@ -200,11 +203,10 @@ static unsigned long acpi_ivhd_misc(unsigned long current, struct device *dev)
 static unsigned long acpi_fill_ivrs40(unsigned long current, acpi_ivrs_ivhd_t *ivhd,
 				       struct device *nb_dev, struct device *iommu_dev)
 {
-	acpi_ivrs_ivhd40_t *ivhd_40;
+	acpi_ivrs_ivhd40_t *ivhd_40 = (acpi_ivrs_ivhd40_t *)current;
 	unsigned long current_backup;
 
-	memset((void *)current, 0, sizeof(acpi_ivrs_ivhd40_t));
-	ivhd_40 = (acpi_ivrs_ivhd40_t *)current;
+	memset(ivhd_40, 0, sizeof(*ivhd_40));
 
 	/* Enable EFR */
 	ivhd_40->type = IVHD_BLOCK_TYPE_FULL__ACPI_HID;
@@ -253,7 +255,7 @@ static unsigned long acpi_fill_ivrs40(unsigned long current, acpi_ivrs_ivhd_t *i
 static unsigned long acpi_fill_ivrs11(unsigned long current, acpi_ivrs_ivhd_t *ivhd,
 				       struct device *nb_dev, struct device *iommu_dev)
 {
-	acpi_ivrs_ivhd11_t *ivhd_11;
+	acpi_ivrs_ivhd11_t *ivhd_11 = (acpi_ivrs_ivhd11_t *)current;
 	ivhd11_iommu_attr_t *ivhd11_attr_ptr;
 	unsigned long current_backup;
 
@@ -261,8 +263,7 @@ static unsigned long acpi_fill_ivrs11(unsigned long current, acpi_ivrs_ivhd_t *i
 	 * In order to utilize all features, firmware should expose type 11h
 	 * IVHD which supersedes the type 10h.
 	 */
-	memset((void *)current, 0, sizeof(acpi_ivrs_ivhd11_t));
-	ivhd_11 = (acpi_ivrs_ivhd11_t *)current;
+	memset(ivhd_11, 0, sizeof(*ivhd_11));
 
 	/* Enable EFR */
 	ivhd_11->type = IVHD_BLOCK_TYPE_FULL__FIXED;
