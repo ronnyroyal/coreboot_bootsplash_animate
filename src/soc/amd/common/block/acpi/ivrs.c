@@ -5,6 +5,7 @@
 #include <amdblocks/cpu.h>
 #include <amdblocks/data_fabric.h>
 #include <amdblocks/ioapic.h>
+#include <amdblocks/iommu.h>
 #include <arch/ioapic.h>
 #include <console/console.h>
 #include <cpu/amd/cpuid.h>
@@ -181,7 +182,8 @@ static unsigned long acpi_ivhd_misc(unsigned long current, struct device *dev)
 	add_ivhd_device_entries(NULL, dev, 0, -1, &root_level,
 		&current, dev->link_list->secondary);
 
-	res = probe_resource(dev, IOMMU_IOAPIC_IDX);
+	res = probe_resource(pcidev_path_behind(dev->link_list, PCI_DEVFN(0, 0)),
+			     IOMMU_IOAPIC_IDX);
 	if (res) {
 		/* Describe IOAPIC associated with the IOMMU */
 		current = acpi_fill_ivrs_ioapic(current, (u8 *)(uintptr_t)res->base,
@@ -310,6 +312,11 @@ unsigned long acpi_fill_ivrs(acpi_ivrs_t *ivrs, unsigned long current)
 	struct device *nb_dev;
 	struct device *dev = NULL;
 
+	if (ivrs == NULL) {
+		printk(BIOS_WARNING, "%s: ivrs is NULL\n", __func__);
+		return current;
+	}
+
 	ivhd = &ivrs->ivhd;
 
 	while ((dev = dev_find_path(dev, DEVICE_PATH_DOMAIN)) != NULL) {
@@ -333,8 +340,8 @@ unsigned long acpi_fill_ivrs(acpi_ivrs_t *ivrs, unsigned long current)
 		/* BDF <bus>:00.2 */
 		ivhd->device_id = 0x02 | (nb_dev->bus->secondary << 8);
 		ivhd->capability_offset = pci_find_capability(iommu_dev, IOMMU_CAP_ID);
-		ivhd->iommu_base_low = pci_read_config32(iommu_dev, 0x44) & 0xffffc000;
-		ivhd->iommu_base_high = pci_read_config32(iommu_dev, 0x48);
+		ivhd->iommu_base_low = pci_read_config32(iommu_dev, IOMMU_CAP_BASE_LO) & 0xffffc000;
+		ivhd->iommu_base_high = pci_read_config32(iommu_dev, IOMMU_CAP_BASE_HI);
 
 		cap_offset_0 = pci_read_config32(iommu_dev, ivhd->capability_offset);
 		cap_offset_10 = pci_read_config32(iommu_dev,

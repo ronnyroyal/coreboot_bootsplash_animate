@@ -35,7 +35,7 @@ RUN \
 		gawk \
 		gcc \
 		git \
-		gnat-12 \
+		gnat \
 		golang \
 		graphicsmagick-imagemagick-compat \
 		graphviz \
@@ -45,7 +45,6 @@ RUN \
 		libcurl4-openssl-dev \
 		libelf-dev \
 		libfreetype6-dev \
-		libftdi-dev \
 		libftdi1-dev \
 		libglib2.0-dev \
 		libgmp-dev \
@@ -57,7 +56,6 @@ RUN \
 		libreadline-dev \
 		libssl-dev \
 		libusb-1.0-0-dev \
-		libusb-dev \
 		libxml2-dev \
 		libyaml-dev \
 		m4 \
@@ -75,7 +73,6 @@ RUN \
 		qemu-system-x86 \
 		rsync \
 		shellcheck \
-		subversion \
 		unifont \
 		uuid-dev \
 		vim-common \
