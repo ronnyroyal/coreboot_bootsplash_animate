@@ -9,4 +9,4 @@ done
 ./build/cbfstool build/coreboot.rom add-int -i 1500 -n etc/boot-menu-wait #define boot menu timeout
 ./build/cbfstool build/coreboot.rom add-int -i $(ls example_images/ | wc -l) -n etc/n-of-img #set image number variable in CBFS
 
-./build/cbfstool build/coreboot.rom #print CBFS content
+./build/cbfstool build/coreboot.rom print #print CBFS content
