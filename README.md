@@ -1,3 +1,13 @@
+Why does this project exist?:
+===============
+When looking into how to coreboot my Thinkpads i found out about
+the ability to add custom bootsplash images and after making some
+custom bootsplash images i started thinking what it would take
+to get an animated bootsplash working.
+Several hours of coding and one temporarily bricked Thinkpad later I
+had a T430 rick-rolling me on every bootup.
+And that's how this utterly pointless thing came into existance.
+
 Setup:
 ===============
 
@@ -16,6 +26,9 @@ Setup:
 `make -j$(nproc)`
 
 `chmod +x addimages.sh`
+
+add image files to example_images/
+file names must be `bootsplashXX.jpg`
 
 `./addimages.sh`
 
