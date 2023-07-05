@@ -43,3 +43,5 @@ tarballs/
 *~
 *.kate-swp
 *.kdev4
+
+example_images/
