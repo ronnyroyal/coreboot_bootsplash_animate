@@ -340,19 +340,23 @@ F:	src/mainboard/gizmosphere/
 
 GOOGLE REX MAINBOARDS
 M:	Subrata Banik <subratabanik@google.com>
-M:	Tarun Tuli <taruntuli@google.com>
+M:	Tarun Tuli <tstuli@gmail.com>
 M:	Kapil Porwal <kapilporwal@google.com>
 M:	Jakub Czapiga <jacz@semihalf.com>
+M:	Eran Mitrani <mitrani@google.com>
 S:	Maintained
 F:	src/mainboard/google/rex/
 
 GOOGLE BRYA MAINBOARDS
-M:	Tarun Tuli <taruntuli@google.com>
+M:	Subrata Banik <subratabanik@google.com>
+M:	Nick Vaccaro <nvaccaro@chromium.org>
+M:	Eric Lai <ericllai@google.com>
 S:	Maintained
 F:	src/mainboard/google/brya/
 
 GOOGLE HATCH MAINBOARDS
-M:	Tarun Tuli <taruntuli@google.com>
+M:	Subrata Banik <subratabanik@google.com>
+M:	Nick Vaccaro <nvaccaro@chromium.org>
 S:	Maintained
 F:	src/mainboard/google/hatch/
 
@@ -418,7 +422,10 @@ M:	Vanessa Eusebio <vanessa.f.eusebio@intel.com>
 S:	Maintained
 F:	src/mainboard/intel/harcuvar/
 
-
+INVENTEC MAINBOARDS
+M:	Annie Chen <Chen.AnnieET@inventec.com>
+S:	Maintained
+F:	src/mainboard/inventec/
 
 JETWAY MAINBOARDS
 S:	Orphan
@@ -688,6 +695,7 @@ F:	src/mainboard/sifive/
 F:	util/riscv/
 
 X86 ARCHITECTURE
+M:	Jeremy Compostella <jeremy.compostella@intel.com>
 S:	MAINTAINED
 F:	src/arch/x86/
 F:	src/cpu/x86/
@@ -778,6 +786,7 @@ F:	src/southbridge/amd/
 F:	src/include/cpu/amd/
 
 INTEL SUPPORT
+R:	Intel_Coreboot_Reviewers <intel_coreboot_reviewers@intel.com>
 S:	Maintained
 F:	src/vendorcode/intel/
 F:	src/cpu/intel/
@@ -794,6 +803,7 @@ F:	src/drivers/intel/fsp1_1/
 
 INTEL FSP 2.0
 M:	Andrey Petrov <andrey.petrov@gmail.com>
+M:	Ronak Kanabar <ronak.kanabar@intel.com>
 S:	Maintained
 F:	src/drivers/intel/fsp2_0/
 
@@ -804,7 +814,6 @@ F:	src/drivers/intel/fsp2_0/
 AMD Cezanne
 M:	Felix Held <felix-coreboot@felixheld.de>
 M:	Jason Glenesk <jason.glenesk@gmail.com>
-M:	Raul E Rangel <rrangel@chromium.org>
 M:	Fred Reitberger <reitbergerfred@gmail.com>
 M:	Matt DeVillier <matt.devillier@amd.corp-partner.google.com>
 L:	amd_coreboot_org_changes@googlegroups.com
@@ -815,7 +824,6 @@ F:	src/vendorcode/amd/fsp/cezanne/
 AMD common SoC code
 M:	Felix Held <felix-coreboot@felixheld.de>
 M:	Jason Glenesk <jason.glenesk@gmail.com>
-M:	Raul E Rangel <rrangel@chromium.org>
 M:	Fred Reitberger <reitbergerfred@gmail.com>
 M:	Matt DeVillier <matt.devillier@amd.corp-partner.google.com>
 L:	amd_coreboot_org_changes@googlegroups.com
@@ -835,7 +843,6 @@ F:	src/vendorcode/amd/fsp/picasso/
 AMD Mendocino
 M:	Felix Held <felix-coreboot@felixheld.de>
 M:	Jason Glenesk <jason.glenesk@gmail.com>
-M:	Raul E Rangel <rrangel@chromium.org>
 M:	Fred Reitberger <reitbergerfred@gmail.com>
 M:	Matt DeVillier <matt.devillier@amd.corp-partner.google.com>
 L:	amd_coreboot_org_changes@googlegroups.com
@@ -862,15 +869,16 @@ F:	src/soc/amd/stoneyridge/
 
 INTEL METEORLAKE SOC
 M:	Subrata Banik <subratabanik@google.com>
-M:	Tarun Tuli <taruntuli@google.com>
+M:	Tarun Tuli <tstuli@gmail.com>
 M:	Kapil Porwal <kapilporwal@google.com>
 M:	Jakub Czapiga <jacz@semihalf.com>
+M:	Eran Mitrani <mitrani@google.com>
 S:	Maintained
 F:	src/soc/intel/meteorlake/
 
 INTEL ALDERLAKE SOC
 M:	Subrata Banik <subratabanik@google.com>
-M:	Tarun Tuli <taruntuli@google.com>
+M:	Nick Vaccaro <nvaccaro@chromium.org>
 S:	Maintained
 F:	src/soc/intel/alderlake/
 
@@ -887,6 +895,10 @@ S:	Maintained
 F:	/src/soc/intel/braswell/
 F:	/src/vendorcode/intel/fsp/fsp1_1/braswell/
 
+INTEL CANNONLAKE SOC
+S:	Orphan
+F:	src/soc/intel/cannonlake/
+
 INTEL DENVERTON-NS SOC
 M:	Jeff Daly <jeffd@silicom-usa.com>
 M:	Vanessa Eusebio <vanessa.f.eusebio@intel.com>
@@ -901,7 +913,7 @@ F:	src/soc/intel/elkhartlake/
 
 INTEL TIGERLAKE SOC
 M:	Subrata Banik <subratabanik@google.com>
-M:	Tarun Tuli <taruntuli@google.com>
+M:	Nick Vaccaro <nvaccaro@chromium.org>
 S:	Maintained
 F:	src/soc/intel/tigerlake/
 
@@ -957,6 +969,12 @@ M:	Stefan Reinauer <stefan.reinauer@coreboot.org>
 M:	Martin Roth <gaumless@gmail.com>
 F:	payloads/external/
 
+COREDOOM PAYLOAD INTEGRATION
+M:	Nicholas Chin <nic.c3.14@gmail.com>
+W:	https://github.com/nic3-14159/coreDOOM
+S:	Maintained
+F:	payloads/external/coreDOOM/
+
 LINUXBOOT PAYLOAD INTEGRATION
 M:	Christian Walter <christian.walter@9elements.com>
 M:	Marcello Sylvester Bauer <info@marcellobauer.com>
@@ -997,7 +1015,6 @@ F:	util/genbuild_h/
 TOOLCHAIN
 M:	Martin Roth <gaumless@gmail.com>
 M:	Felix Singer <felixsinger@posteo.net>
-M:	Elyes Haouas <ehaouas@noos.fr>
 S:	Supported
 F:	util/crossgcc/
 
@@ -1022,6 +1039,7 @@ F:	util/ifdtool/
 
 INTELTOOL
 M:	Stefan Reinauer <stefan.reinauer@coreboot.org>
+M:	Pratik Prajapati <pratikkumar.v.prajapati@intel.com>
 F:	util/inteltool/
 
 INTELMETOOL
@@ -1055,6 +1073,7 @@ F:	src/drivers/aspeed/common/
 F:	src/drivers/aspeed/ast2050/
 
 ACPI
+R:	Cliff Huang <cliff.huang@intel.com>
 M:	Lance Zhao <lance.zhao@gmail.com>
 M:	Tim Wawrzynczak <inforichland@gmail.com>
 S:	Supported
@@ -1116,8 +1135,7 @@ F:	src/drivers/*/tpm/
 F:	src/security/tpm/
 
 SUPERIOS & SUPERIOTOOL
-M:	Felix Held <felix-coreboot@felixheld.de>
-S:	Odd Fixes
+S:	Orphan
 F:	src/superio/
 F:	util/superiotool/
 

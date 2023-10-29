@@ -25,7 +25,7 @@ struct vpd_cbmem {
 	uint32_t version;
 	uint32_t ro_size;
 	uint32_t rw_size;
-	uint8_t blob[0];
+	uint8_t blob[];
 	/* The blob contains both RO and RW data. It starts with RO (0 ..
 	 * ro_size) and then RW (ro_size .. ro_size+rw_size).
 	 */
@@ -94,7 +94,7 @@ fail:
 
 static int init_vpd_rdevs_from_cbmem(void)
 {
-	if (!cbmem_possibly_online())
+	if (!ENV_HAS_CBMEM)
 		return -1;
 
 	struct vpd_cbmem *cbmem = cbmem_find(CBMEM_ID_VPD);

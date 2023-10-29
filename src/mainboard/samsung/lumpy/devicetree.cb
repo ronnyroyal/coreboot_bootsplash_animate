@@ -17,7 +17,24 @@ chip northbridge/intel/sandybridge
 	register "gpu_cpu_backlight" = "0x000001e8"
 	register "gpu_pch_backlight" = "0x03d00000"
 
+	register "ec_present" = "1"
 	register "max_mem_clock_mhz" = "666"
+
+	register "usb_port_config" = "{
+		{ 1, 0, 0x0080 },
+		{ 1, 1, 0x0080 },
+		{ 1, 0, 0x0040 },
+		{ 1, 0, 0x0040 },
+		{ 0, 0, 0x0000 },
+		{ 0, 0, 0x0000 },
+		{ 0, 0, 0x0000 },
+		{ 0, 0, 0x0000 },
+		{ 1, 4, 0x0040 },
+		{ 0, 4, 0x0000 },
+		{ 0, 4, 0x0000 },
+		{ 1, 4, 0x0040 },
+		{ 0, 4, 0x0000 },
+		{ 0, 4, 0x0000 },}"
 
 	device domain 0 on
 		subsystemid 0x1ae0 0xc000 inherit
@@ -84,7 +101,9 @@ chip northbridge/intel/sandybridge
 				end
 			end
 			device ref sata1 on end # SATA Controller 1
-			device ref smbus on end # SMBus
+			device ref smbus on
+				subsystemid 0x04B4 0x18D1
+			end # SMBus
 			device ref sata2 off end # SATA Controller 2
 			device ref thermal on end # Thermal
 		end

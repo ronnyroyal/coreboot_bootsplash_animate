@@ -202,7 +202,7 @@ const char *soc_acpi_name(const struct device *dev)
 static struct device_operations pci_domain_ops = {
 	.read_resources = pci_domain_read_resources,
 	.set_resources = pci_domain_set_resources,
-	.scan_bus = pci_domain_scan_bus,
+	.scan_bus = pci_host_bridge_scan_bus,
 	.acpi_name = &soc_acpi_name,
 	.acpi_fill_ssdt = ssdt_set_above_4g_pci,
 };
@@ -749,7 +749,7 @@ void platform_fsp_silicon_init_params_cb(FSPS_UPD *silupd)
 
 	/* 8254 Timer */
 	bool use_8254 = get_uint_option("legacy_8254_timer", CONFIG(USE_LEGACY_8254_TIMER));
-	silconfig->Timer8254ClkSetting = use_8254;
+	silconfig->Timer8254ClkSetting = !use_8254;
 
 	/* FSP should let coreboot set subsystem IDs, which are read/write-once */
 	silconfig->SubSystemVendorId = 0;

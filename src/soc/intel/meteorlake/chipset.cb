@@ -2,7 +2,7 @@ chip soc/intel/meteorlake
 
 	device cpu_cluster 0 on end
 
-	register "power_limits_config[MTL_P_282_CORE]" = "{
+	register "power_limits_config[MTL_P_282_242_CORE]" = "{
 		.tdp_pl1_override = 15,
 		.tdp_pl2_override = 57,
 		.tdp_pl4 = 114,
@@ -13,6 +13,9 @@ chip soc/intel/meteorlake
 		.tdp_pl2_override = 64,
 		.tdp_pl4 = 120,
 	}"
+
+	# Reduce the size of BasicMemoryTests to speed up the boot time.
+	register "lower_basic_mem_test_size" = "true"
 
 	# NOTE: if any variant wants to override this value, use the same format
 	# as register "common_soc_config.pch_thermal_trip" = "value", instead of

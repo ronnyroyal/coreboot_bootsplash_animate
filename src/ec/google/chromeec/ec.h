@@ -38,10 +38,14 @@ int google_chromeec_usb_get_pd_mux_info(int port, uint8_t *flags);
  *              >=1: Bitmask of the ports that DP device is connected
  */
 int google_chromeec_wait_for_displayport(long timeout_ms);
+/* Poll (up to `timeout_ms` ms) for the DP mode entry
+ * event on the specified port.
+ * Return: 0 on DP mode entry success, -1 on timeout */
+int google_chromeec_wait_for_dp_mode_entry(int port, long timeout_ms);
 /* Poll (up to `timeout_ms` ms) for a Hot-Plug Detect (HPD)
  * event on the specified port.
  * Return: 0 on HPD ready, -1 on timeout */
-int google_chromeec_wait_for_dp_hpd(int port, long timeout_ms);
+int google_chromeec_wait_for_hpd(int port, long timeout_ms);
 /* Send command to EC to request to enter DisplayPort ALT mode on the
  * specified port.
  * Return: 0 on success, -1 on error */
@@ -406,6 +410,19 @@ int google_chromeec_regulator_set_voltage(uint32_t index, uint32_t min_mv,
  * @return		0 on success, -1 on error
  */
 int google_chromeec_regulator_get_voltage(uint32_t index, uint32_t *voltage_mv);
+
+/**
+ * Clear EC AP_IDLE flag
+ */
+void google_chromeec_clear_ec_ap_idle(void);
+
+/**
+ * Check if battery is present and battery level is above critical threshold.
+ *
+ * @return		true: if the battery is present and battery level is above critical threshold
+ *			false: any of the above conditions is not true
+ */
+bool google_chromeec_is_battery_present_and_above_critical_threshold(void);
 
 #if CONFIG(HAVE_ACPI_TABLES)
 /**

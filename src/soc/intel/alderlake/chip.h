@@ -12,6 +12,7 @@
 #include <intelblocks/power_limit.h>
 #include <intelblocks/pcie_rp.h>
 #include <intelblocks/tcss.h>
+#include <intelblocks/xhci.h>
 #include <soc/gpe.h>
 #include <soc/pci_devs.h>
 #include <soc/pmc.h>
@@ -22,6 +23,8 @@
 
 /* Define config parameters for In-Band ECC (IBECC). */
 #define MAX_IBECC_REGIONS	8
+
+#define MAX_HD_AUDIO_SDI_LINKS	2
 
 /* In-Band ECC Operation Mode */
 enum ibecc_mode {
@@ -72,6 +75,34 @@ enum soc_intel_alderlake_power_limits {
 	RPL_P_682_642_482_45W_CORE,
 	RPL_P_682_482_282_28W_CORE,
 	RPL_P_282_242_142_15W_CORE,
+	RPL_S_8161_35W_CORE,
+	RPL_S_8161_65W_CORE,
+	RPL_S_8161_95W_CORE,
+	RPL_S_8161_125W_CORE,
+	RPL_S_8161_150W_CORE,
+	RPL_S_881_35W_CORE,
+	RPL_S_881_65W_CORE,
+	RPL_S_881_125W_CORE,
+	RPL_S_681_35W_CORE,
+	RPL_S_681_65W_CORE,
+	RPL_S_681_125W_CORE,
+	RPL_S_641_35W_CORE,
+	RPL_S_641_65W_CORE,
+	RPL_S_641_125W_CORE,
+	RPL_S_801_80W_CORE,
+	RPL_S_801_95W_CORE,
+	RPL_S_401_35W_CORE,
+	RPL_S_401_58W_CORE,
+	RPL_S_401_60W_CORE,
+	RPL_S_401_65W_CORE,
+	RPL_S_201_35W_CORE,
+	RPL_S_201_46W_CORE,
+	RPL_S_201_65W_CORE,
+	RPL_HX_8_16_55W_CORE,
+	RPL_HX_8_12_55W_CORE,
+	RPL_HX_8_8_55W_CORE,
+	RPL_HX_6_8_55W_CORE,
+	RPL_HX_6_4_55W_CORE,
 	ADL_POWER_LIMITS_COUNT
 };
 
@@ -86,9 +117,13 @@ enum soc_intel_alderlake_cpu_tdps {
 	TDP_35W = 35,
 	TDP_45W = 45,
 	TDP_46W = 46,
+	TDP_55W = 55,
 	TDP_58W = 58,
 	TDP_60W = 60,
 	TDP_65W = 65,
+	TDP_80W = 80,
+	TDP_90W = 90,
+	TDP_95W = 95,
 	TDP_125W = 125,
 	TDP_150W = 150
 };
@@ -136,9 +171,41 @@ static const struct {
 	{ PCI_DID_INTEL_RPL_P_ID_1, RPL_P_682_642_482_45W_CORE, TDP_45W },
 	{ PCI_DID_INTEL_RPL_P_ID_1, RPL_P_682_482_282_28W_CORE, TDP_28W },
 	{ PCI_DID_INTEL_RPL_P_ID_2, RPL_P_682_482_282_28W_CORE, TDP_28W },
+	{ PCI_DID_INTEL_RPL_P_ID_2, RPL_P_682_642_482_45W_CORE, TDP_45W },
 	{ PCI_DID_INTEL_RPL_P_ID_3, RPL_P_282_242_142_15W_CORE, TDP_15W },
 	{ PCI_DID_INTEL_RPL_P_ID_4, RPL_P_282_242_142_15W_CORE, TDP_15W },
 	{ PCI_DID_INTEL_RPL_P_ID_5, RPL_P_282_242_142_15W_CORE, TDP_15W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_95W_CORE, TDP_95W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_125W_CORE, TDP_125W },
+	{ PCI_DID_INTEL_RPL_S_ID_1, RPL_S_8161_150W_CORE, TDP_150W },
+	{ PCI_DID_INTEL_RPL_S_ID_3, RPL_S_881_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_RPL_S_ID_3, RPL_S_881_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_S_ID_3, RPL_S_881_125W_CORE, TDP_125W },
+	{ PCI_DID_INTEL_RPL_S_ID_4, RPL_S_681_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_RPL_S_ID_4, RPL_S_681_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_S_ID_4, RPL_S_681_125W_CORE, TDP_125W },
+	{ PCI_DID_INTEL_RPL_S_ID_5, RPL_S_641_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_RPL_S_ID_5, RPL_S_641_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_S_ID_5, RPL_S_641_125W_CORE, TDP_125W },
+	{ PCI_DID_INTEL_RPL_S_ID_2, RPL_S_801_80W_CORE, TDP_80W },
+	{ PCI_DID_INTEL_RPL_S_ID_2, RPL_S_801_95W_CORE, TDP_90W },
+	{ PCI_DID_INTEL_ADL_S_ID_11, RPL_S_401_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_ADL_S_ID_11, RPL_S_401_58W_CORE, TDP_58W },
+	{ PCI_DID_INTEL_ADL_S_ID_11, RPL_S_401_60W_CORE, TDP_60W },
+	{ PCI_DID_INTEL_ADL_S_ID_11, RPL_S_401_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_ADL_S_ID_12, RPL_S_201_35W_CORE, TDP_35W },
+	{ PCI_DID_INTEL_ADL_S_ID_12, RPL_S_201_46W_CORE, TDP_46W },
+	{ PCI_DID_INTEL_ADL_S_ID_12, RPL_S_201_65W_CORE, TDP_65W },
+	{ PCI_DID_INTEL_RPL_HX_ID_1, RPL_HX_8_16_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_2, RPL_HX_8_12_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_3, RPL_HX_8_8_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_4, RPL_HX_6_8_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_5, RPL_HX_6_4_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_6, RPL_HX_8_8_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_7, RPL_HX_6_8_55W_CORE, TDP_55W },
+	{ PCI_DID_INTEL_RPL_HX_ID_8, RPL_HX_6_4_55W_CORE, TDP_55W },
 };
 
 /* Types of display ports */
@@ -272,17 +339,17 @@ struct soc_intel_alderlake_config {
 	uint32_t gen4_dec;
 
 	/* Enable S0iX support */
-	int s0ix_enable;
+	bool s0ix_enable;
 	/* Support for TCSS xhci, xdci, TBT PCIe root ports and DMA controllers */
-	uint8_t tcss_d3_hot_disable;
+	bool tcss_d3_hot_disable;
 	/* Enable DPTF support */
-	int dptf_enable;
+	bool dptf_enable;
 
 	/* Deep SX enable for both AC and DC */
-	int deep_s3_enable_ac;
-	int deep_s3_enable_dc;
-	int deep_s5_enable_ac;
-	int deep_s5_enable_dc;
+	bool deep_s3_enable_ac;
+	bool deep_s3_enable_dc;
+	bool deep_s5_enable_ac;
+	bool deep_s5_enable_dc;
 
 	/* Deep Sx Configuration
 	 *  DSX_EN_WAKE_PIN       - Enable WAKE# pin
@@ -310,7 +377,7 @@ struct soc_intel_alderlake_config {
 	} sagv;
 
 	/* Rank Margin Tool. 1:Enable, 0:Disable */
-	uint8_t RMT;
+	bool RMT;
 
 	/* USB related */
 	struct usb2_port_config usb2_ports[16];
@@ -324,21 +391,21 @@ struct soc_intel_alderlake_config {
 
 	/* SATA related */
 	uint8_t sata_mode;
-	uint8_t sata_salp_support;
-	uint8_t sata_ports_enable[8];
-	uint8_t sata_ports_dev_slp[8];
+	bool sata_salp_support;
+	bool sata_ports_enable[8];
+	bool sata_ports_dev_slp[8];
 
 	/*
 	 * Enable(0)/Disable(1) SATA Power Optimizer on PCH side.
 	 * Default 0. Setting this to 1 disables the SATA Power Optimizer.
 	 */
-	uint8_t sata_pwr_optimize_disable;
+	bool sata_pwr_optimize_disable;
 
 	/*
 	 * SATA Port Enable Dito Config.
 	 * Enable DEVSLP Idle Timeout settings (DmVal, DitoVal).
 	 */
-	uint8_t sata_ports_enable_dito_config[8];
+	bool sata_ports_enable_dito_config[8];
 
 	/* SataPortsDmVal is the DITO multiplier. Default is 15. */
 	uint8_t sata_ports_dm_val[8];
@@ -347,8 +414,9 @@ struct soc_intel_alderlake_config {
 	uint16_t sata_ports_dito_val[8];
 
 	/* Audio related */
-	uint8_t pch_hda_audio_link_hda_enable;
-	uint8_t pch_hda_dsp_enable;
+	bool pch_hda_audio_link_hda_enable;
+	bool pch_hda_dsp_enable;
+	bool pch_hda_sdi_enable[MAX_HD_AUDIO_SDI_LINKS];
 
 	/* iDisp-Link T-Mode 0: 2T, 2: 4T, 3: 8T, 4: 16T */
 	enum {
@@ -393,13 +461,14 @@ struct soc_intel_alderlake_config {
 		IGD_SM_56MB = 0xFD,
 		IGD_SM_60MB = 0xFE,
 	} igd_dvmt50_pre_alloc;
-	uint8_t skip_ext_gfx_scan;
+
+	bool skip_ext_gfx_scan;
 
 	/* Enable/Disable EIST. 1b:Enabled, 0b:Disabled */
-	uint8_t eist_enable;
+	bool eist_enable;
 
 	/* Enable C6 DRAM */
-	uint8_t enable_c6dram;
+	bool enable_c6dram;
 
 	/*
 	 * SerialIO device mode selection:
@@ -426,7 +495,7 @@ struct soc_intel_alderlake_config {
 	uint8_t serial_io_gspi_cs_state[CONFIG_SOC_INTEL_COMMON_BLOCK_GSPI_MAX];
 
 	/* Enable Pch iSCLK */
-	uint8_t pch_isclk;
+	bool pch_isclk;
 
 	/* CNVi BT Core Enable/Disable */
 	bool cnvi_bt_core;
@@ -458,7 +527,7 @@ struct soc_intel_alderlake_config {
 	 * 0: Use FSP default GPIO PM program,
 	 * 1: coreboot to override GPIO PM program
 	 */
-	uint8_t gpio_override_pm;
+	bool gpio_override_pm;
 
 	/*
 	 * GPIO PM configuration: 0 to disable, 1 to enable power gating
@@ -486,11 +555,11 @@ struct soc_intel_alderlake_config {
 	/* Hybrid storage mode enable (1) / disable (0)
 	 * This mode makes FSP detect Optane and NVME and set PCIe lane mode
 	 * accordingly */
-	uint8_t hybrid_storage_mode;
+	bool hybrid_storage_mode;
 
 #if CONFIG(SOC_INTEL_ALDERLAKE_PCH_N)
 	/* eMMC HS400 mode */
-	uint8_t emmc_enable_hs400_mode;
+	bool emmc_enable_hs400_mode;
 #endif
 
 	/*
@@ -510,7 +579,7 @@ struct soc_intel_alderlake_config {
 	 * Enable(0)/Disable(1) DMI Power Optimizer on PCH side.
 	 * Default 0. Setting this to 1 disables the DMI Power Optimizer.
 	 */
-	uint8_t dmi_power_optimize_disable;
+	bool dmi_power_optimize_disable;
 
 	/*
 	 * Used to communicate the power delivery design capability of the board. This
@@ -523,7 +592,7 @@ struct soc_intel_alderlake_config {
 	 * Enable(1)/Disable(0) CPU Replacement check.
 	 * Default 0. Setting this to 1 to check CPU replacement.
 	 */
-	uint8_t cpu_replacement_check;
+	bool cpu_replacement_check;
 
 	/* ISA Serial Base selection. */
 	enum {
@@ -627,7 +696,7 @@ struct soc_intel_alderlake_config {
 	 */
 	uint8_t fivr_spread_spectrum;
 	/* Enable or Disable Acoustic Noise Mitigation feature */
-	uint8_t acoustic_noise_mitigation;
+	bool acoustic_noise_mitigation;
 	/*
 	 * Acoustic Noise Mitigation Range. Defines the maximum Pre-Wake
 	 * randomization time in micro ticks. This can be programmed only
@@ -636,7 +705,7 @@ struct soc_intel_alderlake_config {
 	 */
 	uint8_t PreWake;
 	/* Disable Fast Slew Rate for Deep Package C States for VR domains */
-	uint8_t fast_pkg_c_ramp_disable[NUM_VR_DOMAINS];
+	bool fast_pkg_c_ramp_disable[NUM_VR_DOMAINS];
 	/*
 	 * Slew Rate configuration for Deep Package C States for VR domains
 	 * 0: Fast/2, 1: Fast/4, 2: Fast/8, 3: Fast/16; see enum slew_rate for values
@@ -681,6 +750,27 @@ struct soc_intel_alderlake_config {
 	 * Set this to 1 in order to disable Tccold Handshake
 	 */
 	bool disable_dynamic_tccold_handshake;
+
+	/*
+	 * Enable or Disable Reduced BasicMemoryTest size.
+	 * Default is set to 0.
+	 * Set this to 1 in order to reduce BasicMemoryTest size
+	 */
+	bool lower_basic_mem_test_size;
+
+	/*
+	 * Enable or Disable SaGV reordering operation.
+	 * Default is set to 0, SaGV reordering enabled.
+	 * Set this to 1 in order to disable SaGV reordering.
+	 */
+	bool disable_sagv_reorder;
+
+	/*
+	 * Enable or Disable hwp scalability tracking.
+	 * Default is set to 1.
+	 * Set this to 0 in order to disable hwp scalability tracking.
+	 */
+	bool enable_hwp_scalability_tracking;
 };
 
 typedef struct soc_intel_alderlake_config config_t;

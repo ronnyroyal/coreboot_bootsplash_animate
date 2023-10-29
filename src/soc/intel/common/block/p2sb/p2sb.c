@@ -128,7 +128,7 @@ static void read_resources(struct device *dev)
 	 * The following code makes sure that it doesn't change if the device
 	 * is visible and the resource allocator is being run.
 	 */
-	mmio_resource_kb(dev, PCI_BASE_ADDRESS_0, P2SB_BAR / KiB, P2SB_SIZE / KiB);
+	mmio_range(dev, PCI_BASE_ADDRESS_0, P2SB_BAR, P2SB_SIZE);
 }
 
 const struct device_operations p2sb_ops = {
@@ -156,6 +156,7 @@ static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_ADP_S_P2SB,
 	PCI_DID_INTEL_ADP_M_P2SB,
 	PCI_DID_INTEL_SPR_SP_P2SB,
+	PCI_DID_INTEL_RPP_S_P2SB,
 	0,
 };
 

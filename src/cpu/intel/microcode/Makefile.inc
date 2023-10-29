@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 bootblock-$(CONFIG_MICROCODE_UPDATE_PRE_RAM) += microcode_asm.S
 
 bootblock-$(CONFIG_SUPPORT_CPU_UCODE_IN_CBFS) += microcode.c
@@ -19,7 +21,7 @@ $(foreach params,$(microcode-params), \
 	$(eval cbfs-files-y += $(params)) \
 	$(eval $(params)-file := $(microcode-params-dir)/$(params)) \
 	$(eval $(params)-type := microcode) \
-	$(eval $(params)-align := $(if $(filter y,$(CONFIG_SOC_AMD_COMMON_BLOCK_LPC_SPI_DMA)),64,16)) \
+	$(eval $(params)-align := 16) \
 )
 
 endif

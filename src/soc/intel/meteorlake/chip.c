@@ -83,6 +83,7 @@ const char *soc_acpi_name(const struct device *dev)
 	case PCI_DEVFN_TBT3:		return "TRP3";
 	case PCI_DEVFN_IPU:		return "IPU0";
 	case PCI_DEVFN_ISH:		return "ISHB";
+	case PCI_DEVFN_GNA:		return "GNA";
 	case PCI_DEVFN_XHCI:	return "XHCI";
 	case PCI_DEVFN_I2C0:	return "I2C0";
 	case PCI_DEVFN_I2C1:	return "I2C1";
@@ -119,6 +120,20 @@ const char *soc_acpi_name(const struct device *dev)
 	printk(BIOS_DEBUG, "Missing ACPI Name for PCI: 00:%02x.%01x\n",
 			PCI_SLOT(dev->path.pci.devfn), PCI_FUNC(dev->path.pci.devfn));
 	return NULL;
+}
+#endif
+
+#if CONFIG(SOC_INTEL_STORE_ISH_FW_VERSION)
+/* SoC override API to identify if ISH Firmware existed inside CSE FPT */
+bool soc_is_ish_partition_enabled(void)
+{
+	struct device *ish = pcidev_path_on_root(PCI_DEVFN_ISH);
+	uint16_t ish_pci_id = ish ? pci_read_config16(ish, PCI_DEVICE_ID) : 0xFFFF;
+
+	if (ish_pci_id == 0xFFFF)
+		return false;
+
+	return true;
 }
 #endif
 
@@ -188,7 +203,7 @@ static void cpu_set_north_irqs(struct device *dev)
 static struct device_operations pci_domain_ops = {
 	.read_resources   = &pci_domain_read_resources,
 	.set_resources    = &pci_domain_set_resources,
-	.scan_bus         = &pci_domain_scan_bus,
+	.scan_bus         = &pci_host_bridge_scan_bus,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_name        = &soc_acpi_name,
 	.acpi_fill_ssdt   = ssdt_set_above_4g_pci,
@@ -217,6 +232,9 @@ static void soc_enable(struct device *dev)
 	else if (dev->path.type == DEVICE_PATH_PCI &&
 		 dev->path.pci.devfn == PCI_DEVFN_PMC)
 		dev->ops = &pmc_ops;
+	else if (dev->path.type == DEVICE_PATH_PCI &&
+		 dev->path.pci.devfn == PCI_DEVFN_IOE_PMC)
+		dev->ops = &ioe_pmc_ops;
 	else if (dev->path.type == DEVICE_PATH_PCI &&
 		 dev->path.pci.devfn == PCI_DEVFN_P2SB)
 		dev->ops = &soc_p2sb_ops;

@@ -4,23 +4,11 @@ chip soc/intel/xeon_sp/spr
 
 	device domain 0 on
 		device pci 16.3 off end # Serial controller: Intel Corporation Device 1be3
+		device pci 17.0 off end # Intel device 1ba2: PCH SATA controller 0 (AHCI)
+		device pci 18.0 off end # Intel device 1bf2: PCH SATA controller 1 (AHCI)
+		device pci 19.0 off end # Intel device 1bd2: PCH SATA controller 2 (AHCI)
 
 		device pci 1f.0 on         # Intel device 1b81: PCH eSPI controller
-			chip superio/common
-				device pnp 2e.0 on
-					chip superio/aspeed/ast2400
-						register "use_espi" = "1"
-						device pnp 2e.2 on      # SUART1
-							io 0x60 = 0x3f8
-							irq 0x70 = 4
-						end
-						device pnp 2e.3 on      # SUART2
-							io 0x60 = 0x2f8
-							irq 0x70 = 3
-						end
-					end
-				end
-			end
 			chip drivers/ipmi # BMC KCS
 				device pnp ca2.0 on end
 				register "bmc_i2c_address" = "0x20"

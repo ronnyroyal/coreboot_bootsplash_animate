@@ -8,7 +8,6 @@ config BOARD_SPECIFIC_OPTIONS
 	select DRIVERS_I2C_HID
 	select DRIVERS_I2C_TAS5825M
 	select EC_SYSTEM76_EC
-	select EC_SYSTEM76_EC_COLOR_KEYBOARD
 	select EC_SYSTEM76_EC_DGPU
 	select HAVE_ACPI_RESUME
 	select HAVE_ACPI_TABLES
@@ -50,7 +49,7 @@ config MAINBOARD_VERSION
 	default "oryp7" if BOARD_SYSTEM76_ORYP7
 
 config CBFS_SIZE
-	default 0xA00000
+	default 0xc00000
 
 config CONSOLE_POST
 	default y
@@ -60,9 +59,6 @@ config ONBOARD_VGA_IS_PRIMARY
 
 config DIMM_MAX
 	default 2
-
-config VGA_BIOS_ID
-	default "8086,9bc4"
 
 config POST_DEVICE
 	default n

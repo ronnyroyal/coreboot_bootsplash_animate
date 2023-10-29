@@ -15,7 +15,7 @@
 
 static struct sha_generic_data sha_op;
 static uint32_t sha_op_size_remaining;
-static uint8_t __attribute__((aligned(32))) sha_hash[64];
+static uint8_t __aligned(32) sha_hash[64];
 
 vb2_error_t vb2ex_hwcrypto_digest_init(enum vb2_hash_algorithm hash_alg, uint32_t data_size)
 {
@@ -90,8 +90,11 @@ vb2_error_t vb2ex_hwcrypto_digest_extend(const uint8_t *buf, uint32_t size)
 	 * mapped address of SPI flash which makes crypto engine to return invalid address.
 	 * Hence if the buffer is from SRAM, pass it to crypto engine. Else copy into a
 	 * temporary buffer before passing it to crypto engine.
+	 *
+	 * Similarly in some SoCs, PSP verstage stack is mapped to a virtual address space.
+	 * In those SoCs, assume that the buffer is from SRAM and pass it to crypto engine.
 	 */
-	if (buf >= _sram && (buf + size) < _esram)
+	if (CONFIG(PSP_VERSTAGE_STACK_IS_MAPPED) || (buf >= _sram && (buf + size) < _esram))
 		return vb2ex_hwcrypto_digest_extend_psp_sram(buf, size);
 
 	while (size) {

@@ -27,46 +27,6 @@ static uint8_t get_ec_value_from_option(const char *name,
 	return lut[index];
 }
 
-static void ec_mirror_with_count(void)
-{
-	unsigned int cmos_mirror_flag_counter = get_uint_option("mirror_flag_counter", UINT_MAX);
-
-	if (cmos_mirror_flag_counter != UINT_MAX) {
-		printk(BIOS_DEBUG, "ITE: mirror_flag_counter = %u\n", cmos_mirror_flag_counter);
-
-		/* Avoid boot loops by only trying a state change once */
-		if (cmos_mirror_flag_counter < MIRROR_ATTEMPTS) {
-			cmos_mirror_flag_counter++;
-			set_uint_option("mirror_flag_counter", cmos_mirror_flag_counter);
-			printk(BIOS_DEBUG, "ITE: Mirror attempt %u/%u.\n", cmos_mirror_flag_counter,
-				MIRROR_ATTEMPTS);
-
-			/* Write the EC mirror flag */
-			ec_write(ECRAM_MIRROR_FLAG, MIRROR_ENABLED);
-
-			/* Check what has been written */
-			if (ec_read(ECRAM_MIRROR_FLAG) == MIRROR_ENABLED)
-				poweroff();
-		} else {
-			/*
-			 * If the mirror flags fails after 1 attempt, it will
-			 * likely need a cold boot, or recovering.
-			 */
-			printk(BIOS_ERR, "ITE: Failed to mirror the EC in %u attempts!\n",
-				MIRROR_ATTEMPTS);
-		}
-	} else {
-		printk(BIOS_DEBUG, "ITE: Powering Off");
-		/* Write the EC mirror flag */
-		ec_write(ECRAM_MIRROR_FLAG, MIRROR_ENABLED);
-
-		/* Check what has been written */
-		if (ec_read(ECRAM_MIRROR_FLAG) == MIRROR_ENABLED)
-			poweroff();
-	}
-}
-
-
 void ec_mirror_flag(void)
 {
 	/*
@@ -79,11 +39,20 @@ void ec_mirror_flag(void)
 	 * that have CCG6, present on devices with TBT, but have a manual
 	 * flag for devices without it.
 	 */
+	uint16_t ec_version = ec_get_version();
+
+	/* Full mirror support was added in EC 1.18 (0x0112) */
+	if (ec_version < 0x0112)
+		return;
+
 	if (CONFIG(EC_STARLABS_MIRROR_SUPPORT) &&
-		(CONFIG(SOC_INTEL_COMMON_BLOCK_TCSS) || get_uint_option("mirror_flag", 0)) &&
-		(ec_get_version() != CONFIG_EC_STARLABS_MIRROR_VERSION))	{
-		printk(BIOS_ERR, "ITE: System and EC ROM version mismatch.\n");
-		ec_mirror_with_count();
+		(CONFIG(DRIVERS_INTEL_USB4_RETIMER) || get_uint_option("mirror_flag", 0)) &&
+		(ec_version != CONFIG_EC_STARLABS_MIRROR_VERSION)) {
+
+		printk(BIOS_ERR, "ITE: EC version 0x%x doesn't match coreboot version 0x%x.\n",
+			ec_version, CONFIG_EC_STARLABS_MIRROR_VERSION);
+
+		ec_write(ECRAM_MIRROR_FLAG, MIRROR_ENABLED);
 	}
 }
 
@@ -299,17 +268,11 @@ static void merlin_init(struct device *dev)
 	 * Values:	Off, On
 	 * Default:	On
 	 *
+	 * Note:	Always enable, as the brightness level of `off` disables it.
+	 *
 	 */
-	const uint8_t kbl_state[] = {
-		KBL_DISABLED,
-		KBL_ENABLED
-	};
 
-	ec_write(ECRAM_KBL_STATE,
-		get_ec_value_from_option("kbl_state",
-					 1,
-					 kbl_state,
-					 ARRAY_SIZE(kbl_state)));
+	ec_write(ECRAM_KBL_STATE, KBL_ENABLED);
 }
 
 static struct device_operations ops = {

@@ -20,11 +20,15 @@
 #include <thread.h>
 #include <timestamp.h>
 
-#if ENV_HAS_DATA_SECTION
+#if ENV_X86 && (ENV_POSTCAR || ENV_SMM)
+struct mem_pool cbfs_cache = MEM_POOL_INIT(NULL, 0, 0);
+#elif CONFIG(POSTRAM_CBFS_CACHE_IN_BSS) && ENV_RAMSTAGE
+static u8 cache_buffer[CONFIG_RAMSTAGE_CBFS_CACHE_SIZE];
+struct mem_pool cbfs_cache =
+	MEM_POOL_INIT(cache_buffer, sizeof(cache_buffer), CONFIG_CBFS_CACHE_ALIGN);
+#else
 struct mem_pool cbfs_cache =
 	MEM_POOL_INIT(_cbfs_cache, REGION_SIZE(cbfs_cache), CONFIG_CBFS_CACHE_ALIGN);
-#else
-struct mem_pool cbfs_cache = MEM_POOL_INIT(NULL, 0, 0);
 #endif
 
 static void switch_to_postram_cache(int unused)
@@ -447,8 +451,7 @@ static void *do_alloc(union cbfs_mdata *mdata, struct region_device *rdev,
 		return mapping;
 	} else if (!cbfs_cache.size) {
 		/* In order to use the cbfs_cache you need to add a CBFS_CACHE to your
-		 * memlayout. For stages that don't have .data sections (x86 pre-RAM),
-		 * it is not possible to add a CBFS_CACHE. */
+		 * memlayout. */
 		ERROR("Cannot map compressed file %s without cbfs_cache\n", mdata->h.filename);
 		return NULL;
 	} else {
@@ -615,7 +618,7 @@ void cbfs_boot_device_find_mcache(struct cbfs_boot_device *cbd, uint32_t id)
 		return;
 
 	const struct cbmem_entry *entry;
-	if (cbmem_possibly_online() &&
+	if (ENV_HAS_CBMEM &&
 	    (entry = cbmem_entry_find(id))) {
 		cbd->mcache = cbmem_entry_start(entry);
 		cbd->mcache_size = cbmem_entry_size(entry);

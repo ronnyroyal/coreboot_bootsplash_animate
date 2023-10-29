@@ -21,10 +21,8 @@ static const struct pad_config override_gpio_table[] = {
 	/* A22 : GPP_A22 ==> USB_C1_AUX_DC_N */
 	PAD_CFG_GPO(GPP_A22, 1, DEEP),
 
-	/* B5  : SOC_I2C_SUB_SDA */
-	PAD_NC_LOCK(GPP_B5, NONE, LOCK_CONFIG),
-	/* B6  : SOC_I2C_SUB_SCL */
-	PAD_NC_LOCK(GPP_B6, NONE, LOCK_CONFIG),
+	/* C1  : SMBDATA ==> TCHSCR_RST_L */
+	PAD_CFG_GPO(GPP_C1, 1, DEEP),
 
 	/* D3  : WCAM_RST_L */
 	PAD_NC_LOCK(GPP_D3, NONE, LOCK_CONFIG),
@@ -33,6 +31,8 @@ static const struct pad_config override_gpio_table[] = {
 	/* D16 : EN_PP1800_PP1200_WCAM_X */
 	PAD_NC_LOCK(GPP_D16, NONE, LOCK_CONFIG),
 
+	/* H19 : SOC_I2C_SUB_INT_ODL */
+	PAD_CFG_GPI_APIC(GPP_H19, NONE, PLTRST, LEVEL, NONE),
 	/* H22 : WCAM_MCLK_R */
 	PAD_NC(GPP_H22, NONE),
 };
@@ -69,6 +69,11 @@ static const struct pad_config early_gpio_table[] = {
 };
 
 static const struct pad_config romstage_gpio_table[] = {
+	/* Enable touchscreen, hold in reset */
+	/* C0  : SMBCLK ==> EN_PP3300_TCHSCR_X */
+	PAD_CFG_GPO(GPP_C0, 1, DEEP),
+	/* C1  : SMBDATA ==> TCHSCR_RST_L */
+	PAD_CFG_GPO(GPP_C1, 0, DEEP),
 	/* H12 : UART0_RTS# ==> SD_PERST_L */
 	PAD_CFG_GPO(GPP_H12, 1, DEEP),
 	/* H20 : IMGCLKOUT1 ==> WLAN_PERST_L */

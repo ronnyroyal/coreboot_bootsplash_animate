@@ -74,7 +74,7 @@ union extended_fsp_revision {
 	} rev;
 };
 
-#if CONFIG_UDK_VERSION < CONFIG_UDK_2017_VERSION
+#if CONFIG_UDK_VERSION < 2017
 enum resource_type {
 	EFI_RESOURCE_SYSTEM_MEMORY		= 0,
 	EFI_RESOURCE_MEMORY_MAPPED_IO		= 1,
@@ -123,7 +123,7 @@ enum cb_err fsp_hob_iterator_get_next_guid_extension(const struct hob_header **h
 						     const uint8_t guid[16],
 						     const void **data, size_t *size);
 
-/* Function to extract the FSP timestamp from FPDT Hob and display */
+/* Function to extract the FSP timestamp from FPDT HOB and display */
 void fsp_display_timestamp(void);
 const void *fsp_get_hob_list(void);
 void *fsp_get_hob_list_ptr(void);
@@ -178,6 +178,21 @@ void fsp_handle_reset(uint32_t status);
 
 /* SoC/chipset must provide this to handle platform-specific reset codes */
 void chipset_handle_reset(uint32_t status);
+
+#if CONFIG(PLATFORM_USES_SECOND_FSP)
+/* The SoC must implement these to choose the appropriate FSP-M/FSP-S binary. */
+const char *soc_select_fsp_m_cbfs(void);
+const char *soc_select_fsp_s_cbfs(void);
+#else
+static inline const char *soc_select_fsp_m_cbfs(void)
+{
+	return CONFIG_FSP_M_CBFS;
+}
+static inline const char *soc_select_fsp_s_cbfs(void)
+{
+	return CONFIG_FSP_S_CBFS;
+}
+#endif
 
 typedef asmlinkage uint32_t (*temp_ram_exit_fn)(void *param);
 typedef asmlinkage uint32_t (*fsp_memory_init_fn)

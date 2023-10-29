@@ -9,6 +9,7 @@
 #include <console/console.h>
 #include <fsp/api.h>
 #include <fsp/util.h>
+#include <mrc_cache.h>
 #include <program_loading.h>
 #include <soc/intel/common/reset.h>
 #include <soc/intel/common/vbt.h>
@@ -210,8 +211,9 @@ static void *fsps_allocator(void *arg_unused, size_t size, const union cbfs_mdat
 
 void fsps_load(void)
 {
+	const char *fsps_cbfs = soc_select_fsp_s_cbfs();
 	struct fsp_load_descriptor fspld = {
-		.fsp_prog = PROG_INIT(PROG_REFCODE, CONFIG_FSP_S_CBFS),
+		.fsp_prog = PROG_INIT(PROG_REFCODE, fsps_cbfs),
 		.alloc = fsps_allocator,
 	};
 	struct prog *fsps = &fspld.fsp_prog;
@@ -244,14 +246,18 @@ void preload_fsps(void)
 	if (!CONFIG(CBFS_PRELOAD))
 		return;
 
-	printk(BIOS_DEBUG, "Preloading %s\n", CONFIG_FSP_S_CBFS);
-	cbfs_preload(CONFIG_FSP_S_CBFS);
+	const char *fsps_cbfs = soc_select_fsp_s_cbfs();
+	printk(BIOS_DEBUG, "Preloading %s\n", fsps_cbfs);
+	cbfs_preload(fsps_cbfs);
 }
 
 void fsp_silicon_init(void)
 {
 	fsps_load();
 	do_silicon_init(&fsps_hdr);
+
+	if (CONFIG(CACHE_MRC_SETTINGS) && CONFIG(FSP_NVS_DATA_POST_SILICON_INIT))
+		save_memory_training_data();
 
 	if (CONFIG(DISPLAY_FSP_TIMESTAMPS))
 		fsp_display_timestamp();

@@ -159,10 +159,6 @@ typedef enum {
 #define MAX_ODT_ENTRIES       11
 #endif
 
-#ifndef MAX_COPY_DIMM_DFE_TAPS
-#define MAX_COPY_DIMM_DFE_TAPS      2
-#endif
-
 #define MAX_TRACE_REGION              5
 #define MAX_TRACE_CACHE_TYPE          2
 
@@ -191,7 +187,7 @@ typedef struct {
   UINT16 tWTR;      ///< Number of tCK cycles for the channel DIMM's minimum internal write to read command delay time.
   UINT16 tWTR_L;    ///< Number of tCK cycles for the channel DIMM's minimum internal write to read command delay time for same bank groups.
   UINT16 tWTR_S;    ///< Number of tCK cycles for the channel DIMM's minimum internal write to read command delay time for different bank groups.
-  UINT16 tCCD_L;  ///< Number of tCK cycles for the channel DIMM's minimum CAS-to-CAS delay for same bank group.
+  UINT16 tCCD_L;    ///< Number of tCK cycles for the channel DIMM's minimum CAS-to-CAS delay for same bank group.
   UINT16 tCCD_L_WR; ///< Number of tCK cycles for the channel DIMM's minimum Write-to-Write delay for same bank group.
 } MRC_CH_TIMING;
 
@@ -207,7 +203,7 @@ typedef struct {
   UINT8            DimmId;
   UINT32           DimmCapacity;            ///< DIMM size in MBytes.
   UINT16           MfgId;
-  UINT8            ModulePartNum[20];       ///< Module part number for DDR3 is 18 bytes however for DRR4 20 bytes as per JEDEC Spec, so reserving 20 bytes
+  UINT8            ModulePartNum[20];       ///< Module part number for DDR3 is 18 bytes however for DDR4 20 bytes as per JEDEC Spec, so reserving 20 bytes
   UINT8            RankInDimm;              ///< The number of ranks in this DIMM.
   UINT8            SpdDramDeviceType;       ///< Save SPD DramDeviceType information needed for SMBIOS structure creation.
   UINT8            SpdModuleType;           ///< Save SPD ModuleType information needed for SMBIOS structure creation.
@@ -284,12 +280,14 @@ typedef struct {
   UINT32            VppVoltage[MAX_PROFILE_NUM];
   UINT16            RcompTarget[MAX_PROFILE_NUM][MAX_RCOMP_TARGETS];
   UINT16            DimmOdt[MAX_PROFILE_NUM][MAX_DIMM][MAX_ODT_ENTRIES];
-  INT8              DimmDFE[MAX_PROFILE_NUM][MAX_DDR5_CH][MAX_DIMM][MAX_COPY_DIMM_DFE_TAPS];
   CONTROLLER_INFO   Controller[MAX_NODE];
   UINT32            NumPopulatedChannels;              ///< Total number of memory channels populated
   HOB_SAGV_INFO     SagvConfigInfo;                    ///< This data structure contains SAGV config values that are considered output by the MRC.
   BOOLEAN           IsIbeccEnabled;
   UINT16            TotalMemWidth;                     ///< Total Memory Width in bits from all populated channels
+  UINT16            PprDetectedErrors;                 ///< PPR: Counts of detected bad rows
+  UINT16            PprRepairFails;                    ///< PPR: Counts of repair failure
+  UINT16            PprForceRepairStatus;              ///< PPR: Force Repair Status
 } MEMORY_INFO_DATA_HOB;
 
 /**

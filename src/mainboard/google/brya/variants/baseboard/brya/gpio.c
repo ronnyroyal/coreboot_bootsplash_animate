@@ -19,7 +19,7 @@ static const struct pad_config gpio_table[] = {
 	/* A6  : ESPI_ALERT1# ==> SPKR_INT_L */
 	PAD_CFG_GPI(GPP_A6, NONE, DEEP),
 	/* A7  : SRCCLK_OE7# ==> WWAN_PCIE_WAKE_ODL */
-	PAD_CFG_GPI_APIC(GPP_A7, NONE, PLTRST, LEVEL, INVERT),
+	PAD_CFG_GPI_INT(GPP_A7, NONE, PLTRST, EDGE_SINGLE),
 	/* A8  : SRCCLKREQ7# ==> WWAN_RF_DISABLE_ODL */
 	PAD_CFG_GPO(GPP_A8, 1, DEEP),
 	/* A9  : ESPI_CLK ==> ESPI_CLK */
@@ -103,7 +103,7 @@ static const struct pad_config gpio_table[] = {
 	/* C0  : SMBCLK ==> EN_PP3300_TCHSCR */
 	PAD_CFG_GPO(GPP_C0, 1, DEEP),
 	/* C1  : SMBDATA ==> USI_RST_L */
-	PAD_CFG_GPO(GPP_C1, 0, DEEP),
+	PAD_CFG_GPO(GPP_C1, 1, DEEP),
 	/* C2  : SMBALERT# ==> GPP_C2_STRAP */
 	PAD_NC(GPP_C2, NONE),
 	/* C3 : SML0CLK ==> EN_UCAM_PWR */
@@ -380,6 +380,27 @@ static const struct pad_config gpio_table[] = {
 	PAD_NC(GPP_VGPIO_19, NONE),
 	PAD_NC(GPP_VGPIO_20, NONE),
 	PAD_NC(GPP_VGPIO_21, NONE),
+
+	/* Put option BT_I2S and SoC SSP2 pins in NC mode, ensure that
+	 * all the relevant VGPIOs were able to be overritten via
+	 *  override_gpio_table of each variant of gpio.c
+	 */
+	/* BT_I2S_BCLK */
+	PAD_NC(GPP_VGPIO_30, NONE),
+	/* BT_I2S_SYNC */
+	PAD_NC(GPP_VGPIO_31, NONE),
+	/* BT_I2S_SDO */
+	PAD_NC(GPP_VGPIO_32, NONE),
+	/* BT_I2S_SDI */
+	PAD_NC(GPP_VGPIO_33, NONE),
+	/* SSP2_SCLK */
+	PAD_NC(GPP_VGPIO_34, NONE),
+	/* SSP2_SFRM */
+	PAD_NC(GPP_VGPIO_35, NONE),
+	/* SSP2_TXD */
+	PAD_NC(GPP_VGPIO_36, NONE),
+	/* SSP2_RXD */
+	PAD_NC(GPP_VGPIO_37, NONE),
 };
 
 /* Early pad configuration in bootblock */

@@ -79,6 +79,16 @@ config ADD_FSP_BINARIES
 	help
 	  Add the FSP-M and FSP-S binaries to CBFS.
 
+config PLATFORM_USES_SECOND_FSP
+	bool
+	default n
+	help
+	  The platform uses two sets of FSP-M/FSP-S binaries and selects the
+	  appropriate one at runtime.  At least one platform requires different
+	  binaries depending on CPU stepping, so supporting any stepping
+	  requires embedding two FSPs.  The platform indicates which is the
+	  "first" and "second" FSP.
+
 config FSP_T_CBFS
 	string "Name of FSP-T in CBFS"
 	depends on FSP_CAR
@@ -132,6 +142,40 @@ config FSP_S_FILE
 	default "\$(obj)/Fsp_S.fd" if FSP_FULL_FD
 	help
 	  The path and filename of the Intel FSP-S binary for this platform.
+
+if PLATFORM_USES_SECOND_FSP
+
+config FSP_S_CBFS_2
+	string "Name of the second FSP-S in CBFS"
+	default "fsps_2.bin"
+
+config FSP_M_CBFS_2
+	string "Name of the second FSP-M in CBFS"
+	default "fspm_2.bin"
+
+config FSP_FD_PATH_2
+	string "Location of the second FSP FD file" if FSP_FULL_FD && !FSP_USE_REPO
+	help
+	  Path to the FSP FD file that contains the individual FSP-M and FSP-S
+	  binaries. The file gets split at build-time.
+
+config FSP_M_FILE_2
+	string "Intel FSP-M (memory init) second binary path and filename" if !FSP_FULL_FD
+	depends on ADD_FSP_BINARIES
+	default "\$(obj)/Fsp_2_M.fd" if FSP_FULL_FD
+	help
+	  The path and filename of the second Intel FSP-M binary for this
+	  platform.
+
+config FSP_S_FILE_2
+	string "Intel FSP-S (silicon init) second binary path and filename" if !FSP_FULL_FD
+	depends on ADD_FSP_BINARIES
+	default "\$(obj)/Fsp_2_S.fd" if FSP_FULL_FD
+	help
+	  The path and filename of the second Intel FSP-S binary for this
+	  platform.
+
+endif
 
 config FSP_CAR
 	bool
@@ -206,8 +250,37 @@ config BMP_LOGO
 	depends on HAVE_FSP_LOGO_SUPPORT
 	help
 	  Uses the FSP to display the boot logo. This method supports a
-	  BMP file only. The uncompressed size can be up to 1 MB. The logo can be compressed
-	  using LZMA.
+	  BMP file only. The uncompressed size can be up to 1 MB. The logo can
+	  be compressed based on either `BMP_LOGO_COMPRESS_*` configs (default LZMA).
+
+config HAVE_BMP_LOGO_COMPRESS_LZMA
+	bool
+	depends on BMP_LOGO
+	default y
+
+choice
+	prompt "BMP Logo compression"
+	depends on BMP_LOGO
+	default BMP_LOGO_COMPRESS_LZMA if HAVE_BMP_LOGO_COMPRESS_LZMA
+	default BMP_LOGO_COMPRESS_LZ4
+
+config BMP_LOGO_COMPRESS_LZMA
+	bool "Use LZMA compression for BMP logo"
+	help
+	  This option enables the use of LZMA compression for the BMP logo.
+	  LZMA is a lossless compression algorithm that can significantly reduce
+	  the size of the logo, without sacrificing quality.
+
+	  If this option is not enabled, the BMP logo will be uncompressed.
+
+config BMP_LOGO_COMPRESS_LZ4
+	bool "Compress BMP logo using LZ4"
+	help
+	  This option enables compression of the BMP logo using the LZ4 algorithm.
+	  Although the size reduction is not as efficient as LZMA compression, however,
+	  it can also make the boot process slightly faster compared to the LZMA.
+
+endchoice
 
 config FSP2_0_LOGO_FILE_NAME
 	string "Logo file"
@@ -381,13 +454,26 @@ config FSP_ENABLE_SERIAL_DEBUG
 	  coreboot native debug driver when coreboot has integrated the debug FSP
 	  binaries. coreboot disables serial messages when this config is not enabled.
 
-config SAVE_MRC_AFTER_FSPS
+config FSP_NVS_DATA_POST_SILICON_INIT
 	bool
 	default n
-	depends on XEON_SP_COMMON_BASE
 	help
-	  Save MRC training data after FSP-S. Select this on platforms that generate MRC
-	  cache HOB data as part of FSP-S rather than FSP-M.
+	  Select this config to enable the workaround for Intel SoC platforms that
+	  do not adhere to the FSP 2.x specification requirement, where the FSP
+	  Silicon Init API produces Non-Volatile Storage (NVS) data instead of the
+	  FSP-Memory Init API.
+
+	  According to the FSP 2.x specification (section 11.3), the FSP populates the
+	  NVS data using the FSP_NON_VOLATILE_STORAGE_HOB and expects the boot firmware
+	  to parse the FSP_NON_VOLATILE_STORAGE_HOB after the FspMemoryInit() API in API
+	  mode.
+
+	  However, not all Intel SoC platforms that support the FSP 2.x specification
+	  adhere to this requirement. For example, the FSP binary for XEON SP platform
+	  produces NVS data (aka FSP_NON_VOLATILE_STORAGE_HOB) after the FspSiliconInit()
+	  API. Therefore, attempting to locate NVS data after the FspMemoryInit() API on
+	  these platforms would result in an error. Use this config to find the NVS data
+	  and store it in Non-Volatile Storage after the FspSiliconInit() API.
 
 config FSP_MULTIPHASE_SI_INIT_RETURN_BROKEN
 	bool

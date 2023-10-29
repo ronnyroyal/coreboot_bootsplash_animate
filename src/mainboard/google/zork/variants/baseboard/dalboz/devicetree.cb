@@ -338,7 +338,7 @@ chip soc/amd/picasso
 					# Set low (0) = Select DMIC0
 					# Set high (1) = Select DMIC1
 					register "dmic_select_gpio" = "ACPI_GPIO_OUTPUT(GPIO_67)"
-					device generic 0.0 alias acp_machine on end
+					device generic 0.0 alias acp_machine hidden end
 				end
 			end # Audio
 			device ref hda off end # HDA
@@ -346,11 +346,11 @@ chip soc/amd/picasso
 		end
 		device ref lpc_bridge on
 			chip ec/google/chromeec
-				device pnp 0c09.0 on
+				device pnp 0c09.0 alias cros_ec on
 					chip ec/google/chromeec/i2c_tunnel
 						register "uid" = "1"
 						register "remote_bus" = "8"
-						device generic 0.0 on
+						device generic 0.0 alias cros_ec_i2c_8 on
 							chip drivers/i2c/generic
 								register "hid" = ""10EC5682""
 								register "name" = ""RT58""
@@ -377,7 +377,7 @@ chip soc/amd/picasso
 		end
 	end # domain
 
-	device ref i2c_3 on
+	device ref i2c_3 hidden
 		chip drivers/i2c/tpm
 			register "hid" = ""GOOG0005""
 			register "desc" = ""Cr50 TPM""
@@ -387,5 +387,7 @@ chip soc/amd/picasso
 	end
 
 	device ref uart_0 on end # console
+
+	device ref emmc on end
 
 end	# chip soc/amd/picasso

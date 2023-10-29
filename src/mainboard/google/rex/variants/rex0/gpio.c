@@ -116,8 +116,6 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_GPO(GPP_C05, 1, PLTRST),
 	/* GPP_C06 : [] ==> SOC_TCHSCR_RPT_EN */
 	PAD_CFG_GPO(GPP_C06, 0, DEEP),
-	/* GPP_C07 : [] ==> SOC_TCHSCR_INT */
-	PAD_CFG_GPI_APIC(GPP_C07, NONE, PLTRST, LEVEL, NONE),
 	/* GPP_C08 : [] ==> SOCHOT_ODL */
 	PAD_CFG_NF(GPP_C08, NONE, DEEP, NF2),
 	/* GPP_C09 : net NC is not present in the given design */
@@ -238,17 +236,17 @@ static const struct pad_config gpio_table[] = {
 	PAD_CFG_GPO(GPP_E22, 1, DEEP),
 
 	/* GPP_F00 :  [] ==> CNV_BRI_DT_R */
-	PAD_CFG_NF(GPP_F00, NONE, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F00, NONE, DEEP, NF1),
 	/* GPP_F01 :  [] ==> CNV_BRI_RSP */
-	PAD_CFG_NF(GPP_F01, UP_20K, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F01, UP_20K, DEEP, NF1),
 	/* GPP_F02 :  [] ==> CNV_RGI_DT_Rl */
-	PAD_CFG_NF(GPP_F02, NONE, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F02, NONE, DEEP, NF1),
 	/* GPP_F03 :  [] ==> CNV_RGI_RSP */
-	PAD_CFG_NF(GPP_F03, UP_20K, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F03, UP_20K, DEEP, NF1),
 	/* GPP_F04 :  [] ==> CNV_RF_RST_L */
-	PAD_CFG_NF(GPP_F04, NONE, DEEP, NF1),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F04, NONE, DEEP, NF1),
 	/* GPP_F05 :  [] ==> CNV_CLKREQ */
-	PAD_CFG_NF(GPP_F05, NONE, DEEP, NF3),
+	PAD_CFG_NF_IOSTANDBY_IGNORE(GPP_F05, NONE, DEEP, NF3),
 	/* GPP_F06 :  [] ==> WWAN_WLAN_COEX3 */
 	PAD_CFG_NF(GPP_F06, NONE, DEEP, NF1),
 	/* GPP_F07 :  [] ==> UCAM_MCLK_R */
@@ -378,6 +376,8 @@ static const struct pad_config gpio_table[] = {
 
 /* Early pad configuration in bootblock */
 static const struct pad_config early_gpio_table[] = {
+	/* GPP_B16 : [] ==> SOC_HDMI_HPD_L */
+	PAD_CFG_NF(GPP_B16, NONE, DEEP, NF2),
 	/* GPP_B17 : [] ==> EN_WWAN_PWR */
 	PAD_CFG_GPO(GPP_B17, 1, DEEP),
 	/* GPP_B18 : [] ==> SOC_I2C_TPM_SDA */
@@ -393,11 +393,17 @@ static const struct pad_config early_gpio_table[] = {
 
 	/* GPP_E07 : [] ==> WWAN_FCPO_L (updated in romstage) */
 	PAD_CFG_GPO(GPP_E07, 0, DEEP),
+	/* GPP_E14 : [] ==> SOC_EDP_HPD_L */
+	PAD_CFG_NF(GPP_E14, NONE, DEEP, NF1),
 	/* GPP_H08 : [] ==> UART_DBG_TX_SOC_RX_R */
 	PAD_CFG_NF(GPP_H08, NONE, DEEP, NF1),
 	/* GPP_H09 : [] ==> UART_SOC_TX_DBG_RX_R */
 	PAD_CFG_NF(GPP_H09, NONE, DEEP, NF1),
 
+	/* GPP_H16 : [] ==> DDIB_HDMI_CTRLCLK*/
+	PAD_CFG_NF(GPP_H16, NONE, DEEP, NF1),
+	/* GPP_H17 : [] ==> DDIB_HDMI_CTRLDATA */
+	PAD_CFG_NF(GPP_H17, NONE, DEEP, NF1),
 	/* GPP_D03 : [] ==> EN_PP3300_SD */
 	PAD_CFG_GPO(GPP_D03, 1, DEEP),
 

@@ -32,14 +32,14 @@ Device(TCSC) {
 			FourWireMode,		/* WireMode */
 			8,			/* DataBitLength */
 			ControllerInitiated,	/* SlaveMode */
-			0x0B71B00,		/* ConnectionSpeed (12MHz) */
+			0x1C9C380,		/* ConnectionSpeed (30MHz) */
 			ClockPolarityLow,	/* ClockPolarity */
 			ClockPhaseFirst,	/* ClockPhase */
 			"\\_SB.PCI0.SPI0",	/* ResourceSource */
 			0,			/* ResourceSourceIndex */
 			ResourceConsumer,	/* ResourceUsage */
 		)
-		Interrupt(ResourceConsumer, Level, ActiveLow, Shared)
+		Interrupt(ResourceConsumer, Edge, ActiveLow, Shared)
 		{
 			TOUCH_SCR_IRQ
 		}

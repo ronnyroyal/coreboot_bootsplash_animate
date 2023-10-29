@@ -2,11 +2,6 @@
 
 config CPU_INTEL_SLOT_1
 	bool
-
-if CPU_INTEL_SLOT_1
-
-config SLOT_SPECIFIC_OPTIONS
-	def_bool y
 	select CPU_INTEL_MODEL_65X
 	select CPU_INTEL_MODEL_67X
 	select CPU_INTEL_MODEL_68X
@@ -19,6 +14,8 @@ config SLOT_SPECIFIC_OPTIONS
 	select SETUP_XIP_CACHE
 	select RESERVE_MTRRS_FOR_OS
 
+if CPU_INTEL_SLOT_1
+
 config DCACHE_RAM_BASE
 	hex
 	default 0xfefc0000
@@ -26,6 +23,9 @@ config DCACHE_RAM_BASE
 config DCACHE_RAM_SIZE
 	hex
 	default 0x02000
+
+config PRERAM_CBFS_CACHE_SIZE
+	default 0x0
 
 config DCACHE_BSP_STACK_SIZE
 	hex

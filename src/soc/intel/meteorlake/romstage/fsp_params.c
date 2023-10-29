@@ -2,12 +2,14 @@
 
 #include <assert.h>
 #include <console/console.h>
+#include <cpu/intel/common/common.h>
 #include <cpu/intel/cpu_ids.h>
 #include <cpu/x86/msr.h>
 #include <device/device.h>
 #include <drivers/wifi/generic/wifi.h>
 #include <fsp/fsp_debug_event.h>
 #include <fsp/util.h>
+#include <intelbasecode/ramtop.h>
 #include <intelblocks/cpulib.h>
 #include <intelblocks/pcie_rp.h>
 #include <option.h>
@@ -156,6 +158,7 @@ static void fill_fspm_mrc_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->RMT = config->rmt;
 	/* Enable MRC Fast Boot */
 	m_cfg->MrcFastBoot = 1;
+	m_cfg->LowerBasicMemTestSize = config->lower_basic_mem_test_size;
 }
 
 static void fill_fspm_cpu_params(FSP_M_CONFIG *m_cfg,
@@ -173,12 +176,30 @@ static void fill_fspm_cpu_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->HyperThreading = get_uint_option("hyper_threading", CONFIG(FSP_HYPERTHREADING));
 }
 
+static void fill_tme_params(FSP_M_CONFIG *m_cfg)
+{
+	m_cfg->TmeEnable = CONFIG(INTEL_TME) && is_tme_supported();
+	if (!m_cfg->TmeEnable)
+		return;
+	m_cfg->GenerateNewTmeKey = CONFIG(TME_KEY_REGENERATION_ON_WARM_BOOT);
+	if (m_cfg->GenerateNewTmeKey) {
+		uint32_t ram_top = get_ramtop_addr();
+		if (!ram_top) {
+			printk(BIOS_WARNING, "Invalid exclusion range start address. "
+						"Full memory encryption is enabled.\n");
+			return;
+		}
+		m_cfg->TmeExcludeBase = (ram_top - 16*MiB);
+		m_cfg->TmeExcludeSize = 16*MiB;
+	}
+}
+
 static void fill_fspm_security_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
 	/* Disable BIOS Guard */
 	m_cfg->BiosGuard = 0;
-	m_cfg->TmeEnable = CONFIG(INTEL_TME) && is_tme_supported();
+	fill_tme_params(m_cfg);
 }
 
 static void fill_fspm_uart_params(FSP_M_CONFIG *m_cfg,
@@ -205,6 +226,21 @@ static void fill_fspm_smbus_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->SmbusEnable = is_devfn_enabled(PCI_DEVFN_SMBUS);
 }
 
+static void fill_fspm_vr_config_params(FSP_M_CONFIG *m_cfg,
+		const struct soc_intel_meteorlake_config *config)
+{
+	/* FastVmode Settings for VR domains */
+	for (size_t domain = 0; domain < NUM_VR_DOMAINS; domain++) {
+		if (config->cep_enable[domain]) {
+			m_cfg->CepEnable[domain] = config->cep_enable[domain];
+			if (config->enable_fast_vmode[domain]) {
+				m_cfg->EnableFastVmode[domain] = config->enable_fast_vmode[domain];
+				m_cfg->IccLimit[domain] = config->fast_vmode_i_trip[domain];
+			}
+		}
+	}
+}
+
 static void fill_fspm_misc_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
@@ -221,6 +257,11 @@ static void fill_fspm_misc_params(FSP_M_CONFIG *m_cfg,
 	m_cfg->SkipMbpHob = !CONFIG(FSP_PUBLISH_MBP_HOB);
 
 	m_cfg->SkipExtGfxScan = config->skip_ext_gfx_scan;
+
+	/* Set PsysPmax if it is available in DT.
+	   PsysPmax is in unit of 1/8 Watt */
+	if (config->psys_pmax_watts)
+		m_cfg->PsysPmax = config->psys_pmax_watts * 8;
 }
 
 static void fill_fspm_audio_params(FSP_M_CONFIG *m_cfg,
@@ -320,6 +361,25 @@ static void fill_fspm_trace_params(FSP_M_CONFIG *m_cfg,
 	}
 }
 
+static void fill_fspm_ibecc_params(FSP_M_CONFIG *m_cfg,
+		const struct soc_intel_meteorlake_config *config)
+{
+	/* In-Band ECC configuration */
+	if (config->ibecc.enable) {
+		m_cfg->Ibecc = config->ibecc.enable;
+		m_cfg->IbeccParity = config->ibecc.parity_en;
+		m_cfg->IbeccOperationMode = config->ibecc.mode;
+		if (m_cfg->IbeccOperationMode == IBECC_MODE_PER_REGION) {
+			FSP_ARRAY_LOAD(m_cfg->IbeccProtectedRegionEnable,
+				       config->ibecc.region_enable);
+			FSP_ARRAY_LOAD(m_cfg->IbeccProtectedRegionBase,
+				       config->ibecc.region_base);
+			FSP_ARRAY_LOAD(m_cfg->IbeccProtectedRegionMask,
+				       config->ibecc.region_mask);
+		}
+	}
+}
+
 static void soc_memory_init_params(FSP_M_CONFIG *m_cfg,
 		const struct soc_intel_meteorlake_config *config)
 {
@@ -341,6 +401,8 @@ static void soc_memory_init_params(FSP_M_CONFIG *m_cfg,
 		fill_fspm_usb4_params,
 		fill_fspm_vtd_params,
 		fill_fspm_trace_params,
+		fill_fspm_vr_config_params,
+		fill_fspm_ibecc_params,
 	};
 
 	for (size_t i = 0; i < ARRAY_SIZE(fill_fspm_params); i++)

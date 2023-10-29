@@ -83,6 +83,7 @@ const char *soc_acpi_name(const struct device *dev)
 	case SA_DEVFN_TBT2:		return "TRP2";
 	case SA_DEVFN_TBT3:		return "TRP3";
 	case SA_DEVFN_IPU:		return "IPU0";
+	case SA_DEVFN_GNA:		return "GNA";
 	case PCH_DEVFN_ISH:		return "ISHB";
 	case PCH_DEVFN_XHCI:		return "XHCI";
 	case PCH_DEVFN_I2C0:		return "I2C0";
@@ -178,7 +179,7 @@ static void cpu_set_north_irqs(struct device *dev)
 static struct device_operations pci_domain_ops = {
 	.read_resources   = &pci_domain_read_resources,
 	.set_resources    = &pci_domain_set_resources,
-	.scan_bus         = &pci_domain_scan_bus,
+	.scan_bus         = &pci_host_bridge_scan_bus,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_name        = &soc_acpi_name,
 	.acpi_fill_ssdt   = ssdt_set_above_4g_pci,

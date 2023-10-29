@@ -16,6 +16,11 @@
 #include <soc/pci_devs.h>
 #include <types.h>
 
+#define GFX_MBUS_CTL		0x4438C
+#define GFX_MBUS_JOIN		BIT(31)
+#define GFX_MBUS_HASHING_MODE	BIT(30)
+#define GFX_MBUS_JOIN_PIPE_SEL	(BIT(28) | BIT(27) | BIT(26))
+
 /* SoC Overrides */
 __weak void graphics_soc_panel_init(struct device *dev)
 {
@@ -29,6 +34,75 @@ __weak const struct i915_gpu_controller_info *
 intel_igd_get_controller_info(const struct device *device)
 {
 	return NULL;
+}
+
+static uint32_t graphics_get_ddi_func_ctrl(unsigned long reg)
+{
+	uint32_t ddi_func_ctrl = graphics_gtt_read(reg);
+	ddi_func_ctrl &= TRANS_DDI_PORT_MASK;
+
+	return ddi_func_ctrl;
+}
+
+/*
+ * Transcoders contain the timing generators for eDP, DP, and HDMI interfaces.
+ * Intel transcoders are based on Quick Sync Video, which offloads video
+ * encoding and decoding tasks from the CPU to the GPU.
+ *
+ * On Intel silicon, there are four display pipes (DDI-A to DDI-D) that support
+ * blending, color adjustments, scaling, and dithering.
+ *
+ * From the display block diagram perspective, the front end of the display
+ * contains the pipes. The pipes connect to the transcoder. The transcoder
+ * (except for wireless) connects to the DDIs to drive the IO/PHY.
+ *
+ * This logic checks if the DDI-A port is attached to the transcoder and
+ * enabled (bit 27). Traditionally, the on-board display (eDP) is attached to DDI-A.
+ * If the above conditions is met, then the on-board display is present and enabled.
+ *
+ * On platforms without an on-board display (i.e., value at bits 27-30 is between 2-9),
+ * meaning that DDI-A (eDP) is not enabled.
+ *
+ * Additionally, if bits 27-30 are all set to 0, this means that no DDI ports
+ * are enabled, and there is no display.
+ *
+ * Consider external display is present and enabled, if eDP/DDI-A is not enabled
+ * and transcoder is attached to any DDI port (bits 27-30 are not zero).
+ */
+static int get_external_display_status(void)
+{
+	/* Read the transcoder register for DDI-A (eDP) */
+	uint32_t ddi_a_func_ctrl = graphics_get_ddi_func_ctrl(TRANS_DDI_FUNC_CTL_A);
+	/* Read the transcoder register for DDI-B (HDMI) */
+	uint32_t ddi_b_func_ctrl = graphics_get_ddi_func_ctrl(TRANS_DDI_FUNC_CTL_B);
+
+	/*
+	 * Check if transcoder is none or connected to DDI-A port (aka eDP).
+	 * Report no external display in both cases.
+	 */
+	if (ddi_a_func_ctrl == TRANS_DDI_PORT_NONE) {
+		return 0;
+	} else {
+		if ((ddi_a_func_ctrl == TRANS_DDI_SELECT_PORT(PORT_A)) &&
+			 (ddi_b_func_ctrl == TRANS_DDI_SELECT_PORT(PORT_B))) {
+			/*
+			 * Dual display detected: both DDI-A(eDP) and
+			 * DDI-B(HDMI) pipes are active
+			 */
+			return 1;
+		} else {
+			if (ddi_a_func_ctrl == TRANS_DDI_SELECT_PORT(PORT_A))
+				return 0;
+			else
+				return 1;
+		}
+	}
+}
+
+/* Check and report if an external display is attached */
+int fsp_soc_report_external_display(void)
+{
+	return graphics_get_framebuffer_address() && get_external_display_status();
 }
 
 static void gma_init(struct device *const dev)
@@ -187,12 +261,27 @@ static void graphics_dev_read_resources(struct device *dev)
 	}
 }
 
+static void graphics_dev_final(struct device *dev)
+{
+	pci_dev_request_bus_master(dev);
+
+	if (CONFIG(SOC_INTEL_GFX_MBUS_JOIN)) {
+		uint32_t hashing_mode = 0;  /* 2x2 */
+		uint32_t pipe_select = 0; /* None */
+		if (!get_external_display_status()) {
+			hashing_mode = GFX_MBUS_HASHING_MODE; /* 1x4 */
+			pipe_select = GFX_MBUS_JOIN_PIPE_SEL; /* Pipe-A */
+		}
+		graphics_gtt_rmw(GFX_MBUS_CTL, (uint32_t)(~pipe_select), GFX_MBUS_JOIN | hashing_mode);
+	}
+}
+
 const struct device_operations graphics_ops = {
 	.read_resources		= graphics_dev_read_resources,
 	.set_resources		= pci_dev_set_resources,
 	.enable_resources	= pci_dev_enable_resources,
 	.init			= gma_init,
-	.final			= pci_dev_request_bus_master,
+	.final			= graphics_dev_final,
 	.ops_pci		= &pci_dev_ops_pci,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_fill_ssdt		= gma_generate_ssdt,
@@ -201,12 +290,16 @@ const struct device_operations graphics_ops = {
 };
 
 static const unsigned short pci_device_ids[] = {
+	PCI_DID_INTEL_RPL_U_GT1,
+	PCI_DID_INTEL_RPL_U_GT2,
+	PCI_DID_INTEL_RPL_U_GT3,
+	PCI_DID_INTEL_RPL_U_GT4,
+	PCI_DID_INTEL_RPL_U_GT5,
 	PCI_DID_INTEL_RPL_P_GT1,
 	PCI_DID_INTEL_RPL_P_GT2,
 	PCI_DID_INTEL_RPL_P_GT3,
 	PCI_DID_INTEL_RPL_P_GT4,
 	PCI_DID_INTEL_RPL_P_GT5,
-	PCI_DID_INTEL_RPL_P_GT6,
 	PCI_DID_INTEL_MTL_M_GT2,
 	PCI_DID_INTEL_MTL_P_GT2_1,
 	PCI_DID_INTEL_MTL_P_GT2_2,
@@ -312,6 +405,14 @@ static const unsigned short pci_device_ids[] = {
 	PCI_DID_INTEL_ADL_N_GT1,
 	PCI_DID_INTEL_ADL_N_GT2,
 	PCI_DID_INTEL_ADL_N_GT3,
+	PCI_DID_INTEL_RPL_S_GT0,
+	PCI_DID_INTEL_RPL_S_GT1_1,
+	PCI_DID_INTEL_RPL_S_GT1_2,
+	PCI_DID_INTEL_RPL_S_GT1_3,
+	PCI_DID_INTEL_RPL_HX_GT1,
+	PCI_DID_INTEL_RPL_HX_GT2,
+	PCI_DID_INTEL_RPL_HX_GT3,
+	PCI_DID_INTEL_RPL_HX_GT4,
 	0,
 };
 

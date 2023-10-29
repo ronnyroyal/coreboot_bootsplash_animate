@@ -7,7 +7,6 @@ config BOARD_SPECIFIC_OPTIONS
 	select DRIVERS_GENERIC_CBFS_UUID
 	select DRIVERS_I2C_HID
 	select EC_SYSTEM76_EC
-	select EC_SYSTEM76_EC_COLOR_KEYBOARD if BOARD_SYSTEM76_DARP6
 	select HAVE_ACPI_RESUME
 	select HAVE_ACPI_TABLES
 	select HAVE_CMOS_DEFAULT
@@ -55,8 +54,7 @@ config MAINBOARD_VERSION
 	default "lemp9" if BOARD_SYSTEM76_LEMP9
 
 config CBFS_SIZE
-	default 0xc00000 if BOARD_SYSTEM76_LEMP9
-	default 0xA00000
+	default 0xc00000
 
 config CONSOLE_POST
 	default y
@@ -69,9 +67,6 @@ config UART_FOR_CONSOLE
 
 config DIMM_MAX
 	default 2
-
-config VGA_BIOS_ID
-	default "8086,9b41"
 
 config POST_DEVICE
 	default n

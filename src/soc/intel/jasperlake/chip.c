@@ -55,6 +55,8 @@ const char *soc_acpi_name(const struct device *dev)
 			case 1: return "SS02";
 			case 2: return "SS03";
 			case 3: return "SS04";
+			case 4: return "SS05";
+			case 5: return "SS06";
 			}
 			break;
 		}
@@ -67,6 +69,7 @@ const char *soc_acpi_name(const struct device *dev)
 	case SA_DEVFN_ROOT:	return "MCHC";
 	case SA_DEVFN_IPU:	return "IPU0";
 	case PCH_DEVFN_ISH:	return "ISHB";
+	case SA_DEVFN_GNA:	return "GNA";
 	case PCH_DEVFN_XHCI:	return "XHCI";
 	case PCH_DEVFN_I2C0:	return "I2C0";
 	case PCH_DEVFN_I2C1:	return "I2C1";
@@ -136,7 +139,7 @@ void soc_init_pre_device(void *chip_info)
 static struct device_operations pci_domain_ops = {
 	.read_resources   = &pci_domain_read_resources,
 	.set_resources    = &pci_domain_set_resources,
-	.scan_bus         = &pci_domain_scan_bus,
+	.scan_bus         = &pci_host_bridge_scan_bus,
 #if CONFIG(HAVE_ACPI_TABLES)
 	.acpi_name        = &soc_acpi_name,
 	.acpi_fill_ssdt   = ssdt_set_above_4g_pci,
