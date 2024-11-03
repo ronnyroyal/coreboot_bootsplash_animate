@@ -57,7 +57,7 @@ static struct param {
 	 */
 	long long int baseaddress_input;
 	uint32_t baseaddress_assigned;
-	uint32_t loadaddress;
+	uint64_t loadaddress;
 	uint32_t headeroffset;
 	/*
 	 * Input can be negative. It will be transformed to offset from start of region (if
@@ -65,7 +65,7 @@ static struct param {
 	 */
 	long long int headeroffset_input;
 	uint32_t headeroffset_assigned;
-	uint32_t entrypoint;
+	uint64_t entrypoint;
 	uint32_t size;
 	uint32_t alignment;
 	uint32_t pagesize;
@@ -650,6 +650,8 @@ static int cbfs_add_integer_component(const char *name,
 
 	header = cbfs_create_file_header(CBFS_TYPE_RAW,
 		buffer.size, name);
+	if (!header)
+		goto done;
 
 	enum vb2_hash_algorithm algo = get_mh_cache()->cbfs_hash.algo;
 	if (algo != VB2_HASH_INVALID)
@@ -774,6 +776,8 @@ static int cbfs_add_master_header(void)
 	/* Never add a hash attribute to the master header. */
 	header = cbfs_create_file_header(CBFS_TYPE_CBFSHEADER,
 		buffer_size(&buffer), name);
+	if (!header)
+		goto done;
 	if (cbfs_add_entry(&image, &buffer, 0, header, 0) != 0) {
 		ERROR("Failed to add cbfs master header into ROM image.\n");
 		goto done;
@@ -915,6 +919,8 @@ static int cbfs_add_component(const char *filename,
 
 	struct cbfs_file *header =
 		cbfs_create_file_header(param.type, buffer.size, name);
+	if (!header)
+		goto error;
 
 	/* Bootblock and CBFS header should never have file hashes. When adding
 	   the bootblock it is important that we *don't* look up the metadata
@@ -2151,7 +2157,7 @@ int main(int argc, char **argv)
 				param.baseaddress_assigned = 1;
 				break;
 			case 'l':
-				param.loadaddress = strtoul(optarg, &suffix, 0);
+				param.loadaddress = strtoull(optarg, &suffix, 0);
 				if (!*optarg || (suffix && *suffix)) {
 					ERROR("Invalid load address '%s'.\n",
 						optarg);
@@ -2159,7 +2165,7 @@ int main(int argc, char **argv)
 				}
 				break;
 			case 'e':
-				param.entrypoint = strtoul(optarg, &suffix, 0);
+				param.entrypoint = strtoull(optarg, &suffix, 0);
 				if (!*optarg || (suffix && *suffix)) {
 					ERROR("Invalid entry point '%s'.\n",
 						optarg);

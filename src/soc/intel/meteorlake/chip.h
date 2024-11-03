@@ -43,7 +43,7 @@ struct ibecc_config {
 /* Types of different SKUs */
 enum soc_intel_meteorlake_power_limits {
 	MTL_P_282_242_CORE,
-	MTL_P_682_CORE,
+	MTL_P_682_482_CORE,
 	MTL_POWER_LIMITS_COUNT
 };
 
@@ -61,7 +61,8 @@ static const struct {
 } cpuid_to_mtl[] = {
 	{ PCI_DID_INTEL_MTL_P_ID_5, MTL_P_282_242_CORE, TDP_15W },
 	{ PCI_DID_INTEL_MTL_P_ID_2, MTL_P_282_242_CORE, TDP_15W },
-	{ PCI_DID_INTEL_MTL_P_ID_1, MTL_P_682_CORE, TDP_28W },
+	{ PCI_DID_INTEL_MTL_P_ID_3, MTL_P_682_482_CORE, TDP_28W },
+	{ PCI_DID_INTEL_MTL_P_ID_1, MTL_P_682_482_CORE, TDP_28W },
 };
 
 /* Types of display ports */
@@ -126,6 +127,22 @@ enum vr_domain {
 	VR_DOMAIN_GT,
 	VR_DOMAIN_SA,
 	NUM_VR_DOMAINS
+};
+
+/*
+ * Slew Rate configuration for Deep Package C States for VR domain.
+ * They are fast time divided by 2.
+ * 0 - Fast/2
+ * 1 - Fast/4
+ * 2 - Fast/8
+ * 3 - Fast/16
+ */
+enum slew_rate {
+	SLEW_FAST_2,
+	SLEW_FAST_4,
+	SLEW_FAST_8,
+	SLEW_FAST_16,
+	SLEW_IGNORE = 0xff,
 };
 
 struct soc_intel_meteorlake_config {
@@ -305,6 +322,30 @@ struct soc_intel_meteorlake_config {
 	 */
 	uint16_t fast_vmode_i_trip[NUM_VR_DOMAINS];
 
+	/*
+	 * Power state current threshold 1.
+	 * Defined in 1/4 A increments. A value of 400 = 100A. Range 0-512,
+	 * which translates to 0-128A. 0 = AUTO. [0] for IA, [1] for GT, [2] for
+	 * SA, [3] through [5] are Reserved.
+	 */
+	uint16_t ps_cur_1_threshold[NUM_VR_DOMAINS];
+
+	/*
+	 * Power state current threshold 2.
+	 * Defined in 1/4 A increments. A value of 400 = 100A. Range 0-512,
+	 * which translates to 0-128A. 0 = AUTO. [0] for IA, [1] for GT, [2] for
+	 * SA, [3] through [5] are Reserved.
+	 */
+	uint16_t ps_cur_2_threshold[NUM_VR_DOMAINS];
+
+	/*
+	 * Power state current threshold 3.
+	 * Defined in 1/4 A increments. A value of 400 = 100A. Range 0-512,
+	 * which translates to 0-128A. 0 = AUTO. [0] for IA, [1] for GT, [2] for
+	 * SA, [3] through [5] are Reserved.
+	 */
+	uint16_t ps_cur_3_threshold[NUM_VR_DOMAINS];
+
 	uint8_t PmTimerDisabled;
 	/*
 	 * SerialIO device mode selection:
@@ -474,6 +515,16 @@ struct soc_intel_meteorlake_config {
 
 	/* Platform Power Pmax in Watts. Zero means automatic. */
 	uint16_t psys_pmax_watts;
+
+	/* Enable or Disable Acoustic Noise Mitigation feature */
+	uint8_t enable_acoustic_noise_mitigation;
+	/* Disable Fast Slew Rate for Deep Package C States for VR domains */
+	uint8_t disable_fast_pkgc_ramp[NUM_VR_DOMAINS];
+	/*
+	 * Slew Rate configuration for Deep Package C States for VR domains
+	 * as per `enum slew_rate` data type.
+	 */
+	uint8_t slow_slew_rate_config[NUM_VR_DOMAINS];
 };
 
 typedef struct soc_intel_meteorlake_config config_t;

@@ -31,7 +31,7 @@ static void adau7002_fill_ssdt(const struct device *dev)
 	acpigen_write_name_string("_HID", ADAU7002_ACPI_HID);
 	acpigen_write_name_integer("_UID", 0);
 	acpigen_write_name_string("_DDN", dev->chip_ops->name);
-	acpigen_write_STA(acpi_device_status(dev));
+	acpigen_write_STA(ACPI_STATUS_DEVICE_HIDDEN_ON);
 
 	/* _DSD for devicetree properties */
 	config = dev->chip_info;
@@ -67,6 +67,6 @@ static void adau7002_enable(struct device *dev)
 }
 
 struct chip_operations drivers_generic_adau7002_ops = {
-	CHIP_NAME("Analog Digital DMIC")
+	.name = "Analog Digital DMIC",
 	.enable_dev = adau7002_enable
 };

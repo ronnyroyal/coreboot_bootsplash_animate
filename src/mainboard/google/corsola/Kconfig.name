@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
 comment "Kingler"
 
 config BOARD_GOOGLE_KINGLER
@@ -22,6 +24,9 @@ config BOARD_GOOGLE_TENTACRUEL
 
 config BOARD_GOOGLE_MAGIKARP
 	bool "->  Magikarp"
+
+config BOARD_GOOGLE_CHINCHOU
+	bool "->  Chinchou"
 
 comment "Staryu"
 
